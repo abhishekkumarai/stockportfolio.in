@@ -1,0 +1,9 @@
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+curl_cffi>=0.6.2
+beautifulsoup4>=4.12.3
+yfinance>=0.2.37
+pandas>=2.2.1
+numpy>=1.26.4
+nltk>=3.8.1
+pydantic>=2.6.4
