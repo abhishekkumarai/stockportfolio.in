@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 import nltk
 from fastapi import FastAPI
@@ -16,13 +17,24 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Pre-download VADER Lexicon on startup
-nltk.data.path.append('/tmp')
+IS_PRODUCTION = os.getenv("ENV", "development").lower() == "production"
+
+# The VADER lexicon is baked into the image at build time (see Dockerfile).
+# In production a missing corpus is a broken deploy, so fail loudly at import
+# rather than downloading on the request path. Locally, fall back to a download.
+if NLTK_DATA := os.getenv("NLTK_DATA"):
+    nltk.data.path.append(NLTK_DATA)
+
 try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
+    nltk.data.find("sentiment/vader_lexicon.zip")
 except LookupError:
-    logger.info("Initializing NLTK vader_lexicon download...")
-    nltk.download('vader_lexicon', download_dir='/tmp', quiet=True)
+    if IS_PRODUCTION:
+        raise RuntimeError(
+            "vader_lexicon not found on NLTK_DATA path. It should have been "
+            "installed at image build time; check the Dockerfile."
+        )
+    logger.info("vader_lexicon missing, downloading for local development...")
+    nltk.download("vader_lexicon", quiet=True)
 
 app = FastAPI(
     title="NSE/BSE Stock Analyst & Backtesting API",
@@ -30,22 +42,39 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for Next.js development and production origins
+# Allowed browser origins. In production this is driven entirely by
+# FRONTEND_ORIGIN (comma-separated) so that attaching a custom domain is a
+# config change, not a code change.
 origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-    "http://localhost:3002",
-    "http://127.0.0.1:3002",
-    "chrome-extension://eppiocemhmnlbhjplcgkofciiegomcon",
+    o.strip() for o in os.getenv("FRONTEND_ORIGIN", "").split(",") if o.strip()
 ]
+
+# Vercel preview deployments get a fresh subdomain per branch, so they can only
+# be matched by pattern. Deliberately not enabled in production, where the
+# origin set is known and should stay closed.
+origin_regex = None
+
+if not IS_PRODUCTION:
+    origins += [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+        "http://localhost:3002",
+        "http://127.0.0.1:3002",
+    ]
+    origin_regex = r"https://[a-z0-9-]+\.vercel\.app"
+
+if IS_PRODUCTION and not origins:
+    raise RuntimeError("FRONTEND_ORIGIN must be set when ENV=production.")
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=r"https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app|chrome-extension://[a-z]+",
-    allow_credentials=True,
+    allow_origin_regex=origin_regex,
+    # No cookies or Authorization headers are used; keeping this False avoids
+    # pairing credentialed requests with a wildcard-ish origin set.
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -53,6 +82,12 @@ app.add_middleware(
 # Include Routers
 app.include_router(stocks_router, prefix="/api")
 app.include_router(backtest_router, prefix="/api")
+
+@app.get("/health")
+def health_check():
+    """Lightweight liveness probe for the hosting platform's health check."""
+    return {"status": "ok"}
+
 
 @app.get("/")
 def read_root():
@@ -66,4 +101,4 @@ if __name__ == "__main__":
     import uvicorn
     # Make sure execution is clean
     logger.info("Starting uvicorn server...")
-    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("app.main:app", host="127.0.0.1", port=8001, reload=True)

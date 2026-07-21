@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -94,8 +95,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
       setLoading(true);
       setError(null);
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
-        const response = await fetch(`${API_BASE}/api/stocks/analyse?ticker=${encodeURIComponent(ticker)}&timeframe=${timeframe}`);
+        const response = await fetch(apiUrl(`/api/stocks/analyse?ticker=${encodeURIComponent(ticker)}&timeframe=${timeframe}`));
         if (!response.ok) {
           throw new Error(`Failed to load data for ${ticker}. Status: ${response.status}`);
         }

@@ -14,6 +14,7 @@ import {
   ScriptableContext
 } from "chart.js";
 import { Line } from "react-chartjs-2";
+import { apiUrl } from "@/lib/api";
 
 // Register Chart.js components
 ChartJS.register(
@@ -98,8 +99,7 @@ export default function BacktestPage() {
     };
 
     try {
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
-      const response = await fetch(`${API_BASE}/api/backtest`, {
+      const response = await fetch(apiUrl("/api/backtest"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

@@ -3,11 +3,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiUrl } from "@/lib/api";
 
 interface TickerSuggestion {
-  symbol: str;
-  name: str;
-  exchange: str;
+  symbol: string;
+  name: string;
+  exchange: string;
 }
 
 export default function HomePage() {
@@ -40,8 +41,7 @@ export default function HomePage() {
     const timer = setTimeout(async () => {
       setLoadingSuggestions(true);
       try {
-        const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8001";
-        const response = await fetch(`${API_BASE}/api/stocks/search?q=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(apiUrl(`/api/stocks/search?q=${encodeURIComponent(searchQuery)}`));
         if (response.ok) {
           const data = await response.json();
           setSuggestions(data);
