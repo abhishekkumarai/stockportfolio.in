@@ -1,0 +1,40 @@
+# Render Blueprint. Must live at the repository root even though the service
+# itself builds from backend/ — Render looks for this file at the root only.
+#
+# First deploy: Render Dashboard -> New -> Blueprint -> pick this repo. Render
+# reads this file and prompts for the values marked `sync: false` below.
+services:
+  - type: web
+    name: stockportfolio-api
+    runtime: docker
+    plan: free
+    region: singapore
+
+    # Without this, Render builds from the repo root and finds no Dockerfile.
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+
+    # Render restarts the service if this stops returning 200. It does not keep
+    # a free instance awake — free services still sleep after ~15 min idle.
+    healthCheckPath: /health
+
+    envVars:
+      # Enables strict CORS and makes a missing NLTK corpus a hard startup
+      # failure rather than a silent per-request download.
+      - key: ENV
+        value: production
+
+      # Comma-separated, no trailing slash. The apex 308-redirects to www, so
+      # www is the origin browsers actually send; the apex is listed too in
+      # case that redirect is ever removed. Value:
+      #   https://www.stockportfolio.in,https://stockportfolio.in
+      - key: FRONTEND_ORIGIN
+        sync: false
+
+      # Matches Vercel branch-preview subdomains, which change per deploy.
+      # e.g. https://stockportfolio-[a-z0-9-]+\.vercel\.app
+      - key: PREVIEW_ORIGIN_REGEX
+        sync: false
+
+    # NLTK_DATA and PORT are deliberately absent: the Dockerfile sets NLTK_DATA,
+    # and Render injects PORT at runtime. Setting PORT here would break startup.

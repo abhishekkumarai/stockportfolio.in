@@ -49,10 +49,11 @@ origins = [
     o.strip() for o in os.getenv("FRONTEND_ORIGIN", "").split(",") if o.strip()
 ]
 
-# Vercel preview deployments get a fresh subdomain per branch, so they can only
-# be matched by pattern. Deliberately not enabled in production, where the
-# origin set is known and should stay closed.
-origin_regex = None
+# Vercel gives every branch preview a fresh subdomain, so previews can only be
+# matched by pattern rather than listed. Keeping the pattern in config lets it
+# stay scoped to this project's own subdomains, instead of trusting every
+# *.vercel.app deployment on the internet. Starlette fullmatches it.
+origin_regex = os.getenv("PREVIEW_ORIGIN_REGEX") or None
 
 if not IS_PRODUCTION:
     origins += [
@@ -63,7 +64,7 @@ if not IS_PRODUCTION:
         "http://localhost:3002",
         "http://127.0.0.1:3002",
     ]
-    origin_regex = r"https://[a-z0-9-]+\.vercel\.app"
+    origin_regex = origin_regex or r"https://[a-z0-9-]+\.vercel\.app"
 
 if IS_PRODUCTION and not origins:
     raise RuntimeError("FRONTEND_ORIGIN must be set when ENV=production.")
