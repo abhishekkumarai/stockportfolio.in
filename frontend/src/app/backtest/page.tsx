@@ -1,5 +1,7 @@
 "use client";
 
+import { AlertTriangle, LineChart } from "lucide-react";
+
 import { useState } from "react";
 import {
   Chart as ChartJS,
@@ -371,7 +373,7 @@ export default function BacktestPage() {
             ) : null}
 
             <button type="submit" className="glowing-button" style={{ marginTop: "10px" }} disabled={loading}>
-              {loading ? "Simulating..." : "📈 Run Simulation"}
+              {loading ? "Simulating..." : "Run Simulation"}
             </button>
           </form>
         </div>
@@ -386,13 +388,13 @@ export default function BacktestPage() {
             </div>
           ) : error ? (
             <div className="glass-panel" style={{ padding: "40px", textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center" }}>
-              <div style={{ fontSize: "2.5rem", marginBottom: "15px" }}>❌</div>
+              <AlertTriangle size={28} strokeWidth={1.5} style={{ marginBottom: "15px" }} />
               <h3 style={{ marginBottom: "10px" }}>Simulation Failed</h3>
               <p>{error}</p>
             </div>
           ) : !result ? (
             <div className="glass-panel" style={{ padding: "40px", textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", color: "var(--text-secondary)" }}>
-              <div style={{ fontSize: "3rem", marginBottom: "15px" }}>📊</div>
+              <LineChart size={32} strokeWidth={1.5} style={{ marginBottom: "15px" }} />
               <h3>No Active Simulation</h3>
               <p style={{ maxWidth: "400px", margin: "10px auto 0 auto" }}>Adjust parameters on the left and click &quot;Run Simulation&quot; to inspect strategy metrics and equity charts.</p>
             </div>
@@ -454,7 +456,7 @@ export default function BacktestPage() {
       {/* Trades History Table */}
       {result && result.trades.length > 0 && (
         <section className="animate-fade-in" style={{ marginTop: "40px" }}>
-          <h3 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "20px" }}>📜 Transaction Log</h3>
+          <h3 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "20px" }}>Transaction Log</h3>
           <div className="custom-table-container">
             <table className="custom-table">
               <thead>

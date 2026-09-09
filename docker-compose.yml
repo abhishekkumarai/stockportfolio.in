@@ -1,0 +1,151 @@
+# Full local stack: Postgres (the system database), Redis (scheduling), the
+# FastAPI api, a scheduler-only worker, and the Next.js frontend.
+#
+#   docker compose up --build -d      # everything
+#   docker compose logs -f worker     # what the nightly schedule is doing
+#   docker compose run --rm migrate   # re-apply migrations after a model change
+#
+# `version:` is deliberately absent - Compose v2 ignores it and warns about it.
+
+name: stockportfolio
+
+# Every Python service runs the same image with the same configuration; only
+# ENABLE_SCHEDULER and the command differ. Anchored here so api, worker and
+# migrate cannot drift apart.
+x-backend-env: &backend-env
+  ENV: development
+  PORT: 8001
+  DATABASE_URL: postgresql://postgres:postgres@db:5432/stockportfolio
+  REDIS_URL: redis://redis:6379/0
+  # The frontend container publishes on 3001; 3000 covers `pnpm dev` on the host.
+  FRONTEND_ORIGIN: http://localhost:3001,http://localhost:3000
+  SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Asia/Kolkata}
+  # Optional, all read from a root .env (or the shell) so no secret is ever
+  # written into this file. Blank is a supported value for every one of them.
+  TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+  ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+  FYERS_APP_ID: ${FYERS_APP_ID:-}
+  FYERS_SECRET_ID: ${FYERS_SECRET_ID:-}
+  FYERS_REDIRECT_URI: ${FYERS_REDIRECT_URI:-}
+  TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+  TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  SMTP_FROM: ${SMTP_FROM:-}
+
+x-backend-build: &backend-build
+  context: ./backend
+  dockerfile: Dockerfile
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    # pgvector rather than plain postgres:16 because the Phase 11 concall/
+    # transcript embeddings land in this same database.
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_DB: stockportfolio
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      # -d/-U matter: bare pg_isready reports ready during the init-db restart
+      # window, which is exactly when the migration would connect and fail.
+      test: ["CMD-SHELL", "pg_isready -U postgres -d stockportfolio"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    # appendonly: the job store lives here, so a restart must not lose the
+    # schedule it was written to preserve.
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - redis_data:/data
+
+  # One-shot: brings the schema to head, then exits 0. api and worker wait for
+  # that exit, so neither can serve a request against a half-migrated database.
+  migrate:
+    build: *backend-build
+    environment: *backend-env
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    restart: unless-stopped
+    build: *backend-build
+    environment:
+      <<: *backend-env
+      # The worker owns the clock; see scripts/worker.py for why.
+      ENABLE_SCHEDULER: "false"
+    ports:
+      - "8002:8001"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # No curl in python:3.12-slim, and adding it just for a probe is 15 MB.
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8001/health').read()"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  worker:
+    restart: unless-stopped
+    build: *backend-build
+    environment:
+      <<: *backend-env
+      ENABLE_SCHEDULER: "true"
+    command: ["python", "scripts/worker.py"]
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  frontend:
+    restart: unless-stopped
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        # NEXT_PUBLIC_* is inlined into the client bundle at build time, so this
+        # has to be a build arg. Passing it only as `environment:` produces a
+        # container that renders pages and fetches nothing - the exact failure
+        # the production deploy hit in July.
+        NEXT_PUBLIC_API_URL: http://localhost:8002
+    ports:
+      - "3001:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:

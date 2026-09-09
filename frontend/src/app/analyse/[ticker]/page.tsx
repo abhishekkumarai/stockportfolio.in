@@ -1,5 +1,7 @@
 "use client";
 
+import { AlertTriangle } from "lucide-react";
+
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { apiUrl } from "@/lib/api";
@@ -127,7 +129,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
   if (error || !data) {
     return (
       <div className="app-container" style={{ textAlign: "center", padding: "80px 20px" }}>
-        <div style={{ fontSize: "3rem", marginBottom: "20px" }}>⚠️</div>
+        <AlertTriangle size={32} strokeWidth={1.5} style={{ marginBottom: "20px" }} />
         <h2 style={{ marginBottom: "10px" }}>Analysis Failed</h2>
         <p style={{ maxWidth: "500px", margin: "0 auto 30px auto" }}>{error}</p>
         <Link href="/" className="glowing-button">
@@ -172,19 +174,19 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
       {
         label: "Closing Price",
         data: chartClosePrices,
-        borderColor: "#00f0ff",
+        borderColor: "#2563eb",
         borderWidth: 2,
         pointBackgroundColor: "transparent",
         pointBorderColor: "transparent",
-        pointHoverBackgroundColor: "#00f0ff",
+        pointHoverBackgroundColor: "#2563eb",
         pointHoverBorderColor: "#ffffff",
         pointHoverRadius: 5,
         fill: true,
         backgroundColor: (context: ScriptableContext<"line">) => {
           const ctx = context.chart.ctx;
           const gradient = ctx.createLinearGradient(0, 0, 0, context.chart.height);
-          gradient.addColorStop(0, "rgba(0, 240, 255, 0.25)");
-          gradient.addColorStop(1, "rgba(0, 240, 255, 0.0)");
+          gradient.addColorStop(0, "rgba(37, 99, 235, 0.14)");
+          gradient.addColorStop(1, "rgba(37, 99, 235, 0.0)");
           return gradient;
         },
         tension: 0.1,
@@ -198,13 +200,18 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "rgba(10, 11, 16, 0.95)",
-        titleFont: { family: "Outfit", size: 12 },
-        bodyFont: { family: "Inter", size: 12 },
-        borderColor: "rgba(0, 240, 255, 0.2)",
+        backgroundColor: "#ffffff",
+        titleColor: "#0f172a",
+        bodyColor: "#475569",
+        titleFont: { family: "Inter", size: 12, weight: 600 as const },
+        bodyFont: { family: "JetBrains Mono", size: 12 },
+        borderColor: "#e2e8f0",
         borderWidth: 1,
-        padding: 12,
-        displayColors: false
+        padding: 10,
+        displayColors: false,
+        callbacks: {
+          label: (context: any) => `₹${Number(context.parsed.y).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+        }
       }
     },
     scales: {
@@ -217,10 +224,11 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
         }
       },
       y: {
-        grid: { color: "rgba(255, 255, 255, 0.04)" },
+        grid: { color: "#f1f5f9" },
         ticks: {
           color: "#64748b",
-          font: { family: "Inter", size: 10 }
+          font: { family: "JetBrains Mono", size: 10 },
+          callback: (value: any) => `₹${Number(value).toLocaleString()}`
         }
       }
     }
@@ -344,7 +352,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
                 onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.15)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(0, 240, 255, 0.05)'}
               >
-                📥 Export CSV
+                Export CSV
               </button>
               <div style={{ display: 'flex', gap: '6px' }}>
                 {['day', 'week', 'month', 'year'].map((tf) => (
@@ -496,7 +504,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
       {/* Scraped News Feed section */}
       <section>
         <h3 style={{ fontSize: "1.4rem", fontWeight: 700, marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-          📰 Online News Feed & Sentiment
+          Online News Feed & Sentiment
         </h3>
         
         {data.news.length === 0 ? (
