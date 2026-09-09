@@ -1,0 +1,66 @@
+[project]
+name = "stockportfolio-backend"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "curl_cffi>=0.7.0",
+    "beautifulsoup4>=4.12.0",
+    "yfinance>=0.2.40",
+    "pandas>=2.2.0",
+    "numpy>=1.26.0,<2.3",
+    "nltk>=3.9.0",
+    "pydantic>=2.9.0",
+    # scipy carries the optimiser (SLSQP), the hierarchical clustering behind HRP,
+    # and the normal distribution used by VaR.
+    "scipy>=1.14.0",
+
+    # --- Phase 6: persistence and scheduling -----------------------------------
+    # All optional at runtime: with DATABASE_URL unset the app never opens a
+    # connection and every persistence-backed route answers 503 with a reason.
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13.0",
+    # psycopg 3 (not psycopg2): SQLAlchemy 2.0's postgresql+psycopg dialect. The
+    # binary wheel avoids needing libpq and a compiler in the Docker image.
+    "psycopg[binary]>=3.2.0",
+    "apscheduler>=3.10.0",
+    # Optional coordinator (REDIS_URL). Carries the APScheduler job store so the
+    # schedule survives a restart, and the lock that keeps the api and worker
+    # containers from running the same nightly job twice. Unset -> in-memory.
+    "redis>=5.0.0",
+    # Fernet, for encrypting stored broker tokens. Without it token storage is
+    # refused outright rather than falling back to plaintext.
+    "cryptography>=42.0.0",
+
+    # --- Phase 11: AI layer ----------------------------------------------------
+    # Optional: without ANTHROPIC_API_KEY every AI feature reports available:false
+    # and the deterministic engines are untouched.
+    "anthropic>=0.40.0",
+]
+
+# Deliberately NOT included:
+#   statsmodels - the factor regression is ordinary least squares over six
+#     columns, which numpy.linalg.lstsq does in three lines. statsmodels would
+#     add tens of megabytes to an image whose size is already a live concern.
+#   backtrader - app/engine implements the same feed/broker/strategy/sizer/
+#     analyzer model directly, which is lighter to deploy and lets the
+#     next-bar-open fill rule be enforced structurally.
+#   mcp - mcp_server/server.py speaks JSON-RPC over stdio directly; the four
+#     methods a read-only tool server needs do not justify the dependency.
+
+[dependency-groups]
+# Test-only dependencies. Not installed into the Docker image (`uv sync
+# --no-dev`) - keeping them out matters because the deployed image size is
+# already a live concern.
+dev = [
+    "pytest==9.1.1",
+    # Required by starlette's TestClient, which will not import without it.
+    "httpx2==2.10.0",
+]
+
+[tool.uv]
+# app/ is run in place (python -m app.main, uvicorn app.main:app) and
+# pytest.ini puts the backend dir on sys.path directly - it is never
+# `pip install`-ed as a library, so this isn't a buildable package.
+package = false
