@@ -17,6 +17,11 @@ from nltk.sentiment.vader import SentimentIntensityAnalyzer
 
 logger = logging.getLogger(__name__)
 
+
+class PriceDataUnavailable(Exception):
+    """Raised when no real price history could be fetched for a symbol."""
+
+
 # Initialize VADER Sentiment Analyzer
 try:
     sia = SentimentIntensityAnalyzer()
@@ -141,27 +146,14 @@ def get_stock_analysis(ticker_symbol: str, news_headlines: List[str], timeframe:
         currency = info.get("currency") or "INR"
 
     except Exception as e:
-        logger.exception(f"Error fetching yfinance data for {ticker_symbol}: {str(e)}")
-        # Provide Mock/Fallback Stock Data if yfinance fails (ensuring API resilience)
-        name = ticker_symbol.replace(".NS", "").replace(".BO", "")
-        current_price = 1500.0
-        price_change = 12.5
-        price_change_pct = 0.84
-        day_high = 1515.0
-        day_low = 1488.0
-        volume = 2500000
-        fifty_two_week_high = 1800.0
-        fifty_two_week_low = 1200.0
-        currency = "INR"
-        
-        # Construct mock history corresponding to selected timeframe
-        dates = pd.date_range(end=datetime.now(), periods=500, freq='B' if interval=="1d" else '30T')
-        hist = pd.DataFrame({
-            "Close": np.linspace(1400, 1500, 500) + np.random.normal(0, 15, 500),
-            "High": np.linspace(1410, 1510, 500) + np.random.normal(0, 15, 500),
-            "Low": np.linspace(1390, 1490, 500) + np.random.normal(0, 15, 500),
-            "Volume": np.random.randint(1000000, 4000000, 500)
-        }, index=dates)
+        # No mock fallback. This function's output is a buy/sell/hold call, and
+        # inventing a 1500.00 price plus a random-walk history to keep the
+        # endpoint "resilient" produces a confident recommendation about a
+        # security nobody priced. Failing visibly is the only safe answer.
+        logger.warning("No price data for %s: %s", ticker_symbol, e)
+        raise PriceDataUnavailable(
+            f"No price history available for {ticker_symbol}: {e}"
+        ) from e
 
     # --- Technical Indicators Calculation ---
     close_prices = hist["Close"]

@@ -7,6 +7,11 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
+
+class BacktestDataUnavailable(Exception):
+    """Raised when a backtest cannot be run because no real history was fetched."""
+
+
 def run_backtest(
     ticker_symbol: str,
     start_date_str: str,
@@ -44,33 +49,14 @@ def run_backtest(
             hist.index = hist.index.tz_localize(None)
 
     except Exception as e:
-        logger.exception(f"Error fetching data for backtest of {ticker_symbol}: {str(e)}")
-        # If yfinance fails, generate robust mock historical data for the backtest
-        # We generate a trending series so that backtests look realistic and compute properly
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-        end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-        days = (end_date - start_date).days
-        if days <= 0:
-            days = 365
-            start_date = end_date - timedelta(days=365)
-            
-        # Mock historical data (daily)
-        total_days = days + 365  # Include warm up
-        warmup_start = start_date - timedelta(days=365)
-        dates = pd.date_range(start=warmup_start, end=end_date, freq='B') # Business days
-        
-        # Upward trending random walk
-        np.random.seed(42)
-        steps = np.random.normal(0.0005, 0.015, len(dates))
-        prices = 1000.0 * np.exp(np.cumsum(steps))
-        
-        # Create DataFrame
-        hist = pd.DataFrame({
-            "Close": prices,
-            "High": prices * 1.01,
-            "Low": prices * 0.99,
-            "Volume": np.random.randint(1000000, 5000000, len(dates))
-        }, index=dates)
+        # No synthetic price series. A backtest is a claim about what a
+        # strategy *would have earned*; run it against a seeded random walk and
+        # the equity curve, CAGR and Sharpe it reports are all fiction that
+        # looks exactly like a result. Fail instead.
+        logger.warning("No price data for backtest of %s: %s", ticker_symbol, e)
+        raise BacktestDataUnavailable(
+            f"No historical price data available for {ticker_symbol}: {e}"
+        ) from e
 
     # --- Compute Technical Indicators on the whole dataset ---
     close_prices = hist["Close"]

@@ -1,8 +1,10 @@
-.venv/
-venv/
-env/
-__pycache__/
-*.py[cod]
-*$py.class
+.venv
+venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.git
 .env
-vercel.json
+*.log

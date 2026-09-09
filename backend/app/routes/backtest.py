@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from app.backtester import run_backtest
+from app.backtester import BacktestDataUnavailable, run_backtest
 from typing import Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,8 @@ def execute_backtest(req: BacktestRequest):
             sma_slow_period=req.smaSlow
         )
         return results
+    except BacktestDataUnavailable as e:
+        raise HTTPException(status_code=502, detail=str(e))
     except Exception as e:
         logger.exception(f"Error executing backtest for {req.ticker}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error running backtest: {str(e)}")

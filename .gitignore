@@ -14,6 +14,12 @@ __pycache__/
 venv/
 env/
 .env
+.env*
+.env.local
+
+# Private / Local
+ignore_offline/
+.claude/
 
 # OS
 .DS_Store
