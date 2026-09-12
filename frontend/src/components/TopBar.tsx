@@ -15,9 +15,14 @@ interface TickerSuggestion {
 interface TopBarProps {
   onToggleSidebar?: () => void;
   isSidebarOpen?: boolean;
+  isDesktopSidebarOpen?: boolean;
 }
 
-export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps = {}) {
+export default function TopBar({
+  onToggleSidebar,
+  isSidebarOpen,
+  isDesktopSidebarOpen = true,
+}: TopBarProps = {}) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<TickerSuggestion[]>([]);
@@ -98,98 +103,69 @@ export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps =
   };
 
   return (
-    <header className="w-full max-w-full h-14 sticky top-0 z-50 bg-white border-b border-slate-200 px-4 flex items-center justify-between overflow-hidden select-none shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]">
-      {/* Left Section: Hamburger Menu, Logo & Live Benchmarks */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+    <header className="w-full max-w-full h-14 sticky top-0 z-40 bg-white border-b border-slate-200 px-3 sm:px-4 flex items-center justify-between select-none shadow-[0_1px_2px_0_rgba(15,23,42,0.03)] gap-2 sm:gap-4">
+      {/* Left Section: Sidebar Toggle (when collapsed / mobile) & Market Telemetry */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         <button
           type="button"
           onClick={onToggleSidebar}
-          className="p-1.5 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className={`p-1.5 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            isDesktopSidebarOpen ? "lg:hidden" : "flex"
+          }`}
           aria-label="Toggle navigation menu"
           title="Toggle Navigation Menu"
         >
           <Menu size={20} />
         </button>
 
-        <Link href="/" className="flex items-center gap-2 text-decoration-none">
-          <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
-            SP
-          </div>
-          <div className="flex flex-col leading-tight">
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-slate-900 text-[15px] tracking-tight font-sans">
-                StockPortfolio<span className="text-blue-600">.in</span>
-              </span>
-              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 tracking-wider uppercase font-mono">
-                Enterprise Cockpit
-              </span>
-            </div>
-          </div>
-        </Link>
-
-        <div className="h-5 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
-
-        {/* Live Benchmarks */}
-        <div className="hidden md:flex items-center gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-            <span className="text-slate-500 text-[11px] font-sans font-medium">NIFTY 50</span>
-            <span className="font-semibold text-slate-900">24,852.15</span>
-            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingUp size={10} className="mr-0.5" /> +0.58%
+        {/* Live Market Telemetry Chips */}
+        <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-mono">
+          <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+            <span className="text-slate-500 text-[10px] sm:text-[11px] font-sans font-medium">NIFTY 50</span>
+            <span className="font-semibold text-slate-900 text-[11px]">24,852.15</span>
+            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingUp size={9} className="mr-0.5" /> +0.58%
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+          <div className="hidden xl:flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
             <span className="text-slate-500 text-[11px] font-sans font-medium">SENSEX</span>
-            <span className="font-semibold text-slate-900">81,332.70</span>
-            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingUp size={10} className="mr-0.5" /> +0.51%
+            <span className="font-semibold text-slate-900 text-[11px]">81,332.70</span>
+            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingUp size={9} className="mr-0.5" /> +0.51%
             </span>
           </div>
 
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+          <div className="hidden 2xl:flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
             <span className="text-slate-500 text-[11px] font-sans font-medium">INDIA VIX</span>
-            <span className="font-semibold text-slate-900">13.45</span>
-            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingDown size={10} className="mr-0.5" /> -4.41%
+            <span className="font-semibold text-slate-900 text-[11px]">13.45</span>
+            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingDown size={9} className="mr-0.5" /> -4.41%
             </span>
-          </div>
-
-          <div className="hidden xl:flex items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-              <span className="text-slate-500 text-[11px] font-sans font-medium">BRENT</span>
-              <span className="font-semibold text-slate-900">$74.80</span>
-              <span className="text-emerald-700 text-[10px] font-semibold">+0.4%</span>
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-              <span className="text-slate-500 text-[11px] font-sans font-medium">USD/INR</span>
-              <span className="font-semibold text-slate-900">₹83.94</span>
-              <span className="text-slate-500 text-[10px]">-0.05%</span>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Center Section: Universal Search */}
-      <div className="min-w-0 flex-1 max-w-md mx-4 hidden md:block" ref={dropdownRef}>
-        <form onSubmit={handleSearchSubmit} className="relative flex items-center">
-          <Search size={15} className="absolute left-3 text-slate-400" />
+      <div className="flex-1 min-w-[120px] max-w-md relative" ref={dropdownRef}>
+        <form onSubmit={handleSearchSubmit} className="relative flex items-center w-full">
+          <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none" />
           <input
             ref={searchInputRef}
             type="text"
-            placeholder="Search 500+ Indian equities, F&O contracts, AMFI funds... (Cmd+K)"
+            placeholder="Search equities, F&O, funds... (Cmd+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-12 text-xs font-sans bg-slate-50 focus:bg-white text-slate-900 placeholder-slate-400 rounded-md border border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all"
+            className="w-full h-8 sm:h-9 pl-8 sm:pl-9 pr-10 text-xs font-sans bg-slate-50 focus:bg-white text-slate-900 placeholder-slate-400 rounded-md border border-slate-200 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all"
           />
-          <div className="absolute right-2.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-400 shadow-2xs">
+          <div className="hidden sm:flex absolute right-2 items-center px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-400 shadow-2xs pointer-events-none">
             ⌘K
           </div>
         </form>
 
         {/* Dropdown Suggestions */}
         {showDropdown && suggestions.length > 0 && (
-          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden z-50 divide-y divide-slate-100 max-h-72 overflow-y-auto">
+          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden z-50 divide-y divide-slate-100 max-h-72 overflow-y-auto">
             {suggestions.map((item) => (
               <div
                 key={item.symbol}
@@ -209,40 +185,35 @@ export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps =
         )}
       </div>
 
-      {/* Right Section: Socket Status & User Profile */}
-      <div className="flex items-center gap-3">
+      {/* Right Section: Socket Status & Notifications */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Live WebSocket status */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-mono text-emerald-700">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-medium text-[11px]">WebSocket Live 3ms</span>
+        <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-mono text-emerald-700 shrink-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="font-medium text-[11px] hidden lg:inline">WebSocket Live</span>
+          <span className="font-medium text-[11px] lg:hidden">Live</span>
+          <span className="font-mono text-[10px] text-emerald-600">3ms</span>
         </div>
 
         {/* Notifications */}
         <button
+          type="button"
           aria-label="Notifications"
-          className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+          className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors shrink-0"
         >
-          <Bell size={18} />
+          <Bell size={17} />
           <span className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white"></span>
         </button>
 
-        <div className="h-5 w-[1px] bg-slate-200 hidden sm:block"></div>
-
-        {/* User Profile */}
+        {/* Broker Quick Link (visible on wide displays, profile is in sidebar bottom) */}
         <Link
           href="/auth"
-          className="flex items-center gap-2.5 pl-1 cursor-pointer group text-decoration-none"
+          className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition group text-decoration-none shrink-0"
           title="Manage Broker Auth & API Keys"
         >
-          <div className="w-7 h-7 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 transition-all">
-            AK
-          </div>
-          <div className="hidden lg:flex flex-col text-left leading-none">
-            <span className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
-              Abhishek Kumar
-            </span>
-            <span className="text-[10px] text-slate-400 mt-0.5 font-mono">Institutional Pro Desk</span>
-          </div>
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
+          <span className="text-[11px] font-semibold text-slate-800 group-hover:text-blue-600 transition">Broker Active</span>
+          <span className="text-[10px] text-slate-400">↗</span>
         </Link>
       </div>
     </header>

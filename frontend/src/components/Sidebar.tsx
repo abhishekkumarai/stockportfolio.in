@@ -17,6 +17,7 @@ import {
   GitFork,
   FlaskConical,
   FileText,
+  Menu,
   X,
 } from "lucide-react";
 import { getFyersStatus, getToken, type FyersStatus } from "@/lib/portfolioApi";
@@ -24,9 +25,10 @@ import { getFyersStatus, getToken, type FyersStatus } from "@/lib/portfolioApi";
 interface SidebarProps {
   onNavigate?: () => void;
   onClose?: () => void;
+  onToggleCollapse?: () => void;
 }
 
-export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
+export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: SidebarProps = {}) {
   const pathname = usePathname();
   const [fyersStatus, setFyersStatus] = useState<FyersStatus | null>(null);
   const [search, setSearch] = useState("");
@@ -67,30 +69,34 @@ export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
   };
 
   return (
-    <aside className="w-56 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between select-none min-h-full h-full z-40">
-      <div className="py-3">
-        {/* Sidebar Workspace Header */}
-        <div className="px-4 pb-3 mb-2 border-b border-slate-200 flex items-center justify-between">
-          <div>
-            <div className="text-[11px] font-bold text-slate-900 uppercase tracking-wider font-mono">
-              Alpha Terminal v4.2
-            </div>
-            <div className="text-[11px] text-slate-400">Unified Institutional Desk</div>
+    <aside className="w-60 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between select-none min-h-full h-full z-40">
+      {/* Top: StockPortfolio Banner & Hamburger Toggle */}
+      <div className="h-14 px-3.5 border-b border-slate-200 flex items-center justify-between shrink-0 bg-white">
+        <Link href="/" onClick={() => handleNav("/")} className="flex items-center gap-2 text-decoration-none min-w-0">
+          <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-sm shrink-0">
+            SP
           </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                aria-label="Close sidebar navigation"
-              >
-                <X size={16} />
-              </button>
-            )}
+          <div className="flex flex-col leading-tight min-w-0">
+            <span className="font-bold text-slate-900 text-sm tracking-tight font-sans truncate">
+              StockPortfolio<span className="text-blue-600">.in</span>
+            </span>
+            <span className="text-[9px] font-mono text-slate-400 uppercase tracking-wider font-semibold">
+              Enterprise Cockpit
+            </span>
           </div>
-        </div>
+        </Link>
+        <button
+          type="button"
+          onClick={onToggleCollapse || onClose}
+          className="p-1.5 rounded-md text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors shrink-0 -mr-1"
+          aria-label="Toggle navigation menu"
+          title="Toggle Navigation Menu"
+        >
+          <Menu size={18} />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto py-3">
 
         {/* Navigation Modules */}
         <div className="space-y-4 px-2">
@@ -345,22 +351,35 @@ export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
         </div>
       </div>
 
-      {/* Footer Broker Connection Status */}
-      <Link
-        href="/auth"
-        onClick={() => handleNav("/auth")}
-        className="p-3 border-t border-slate-200 bg-slate-50 text-xs block hover:bg-slate-100 transition group text-decoration-none"
-      >
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-[11px] font-medium text-slate-600 group-hover:text-blue-600 transition">Broker Auth Gateway</span>
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {fyersStatus?.connected ? "Live Active" : "Pro Desk Demo"}
-          </span>
-        </div>
-        <div className="text-[10px] text-slate-400 font-mono truncate">
-          {fyersStatus?.fy_id ? `ID: ${fyersStatus.fy_id}` : "Token: FYERS-NSE-PRO-8491"} ↗
-        </div>
-      </Link>
+      {/* Bottom: User Profile Section */}
+      <div className="p-3 border-t border-slate-200 bg-slate-50/90 shrink-0">
+        <Link
+          href="/auth"
+          onClick={() => handleNav("/auth")}
+          className="flex items-center gap-2.5 p-1.5 -m-0.5 rounded-lg hover:bg-slate-100 transition group text-decoration-none"
+          title="Manage Broker Auth & API Keys"
+        >
+          <div className="w-8 h-8 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 shrink-0 transition-all">
+            AK
+          </div>
+          <div className="flex flex-col text-left min-w-0 flex-1 leading-tight">
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                Abhishek Kumar
+              </span>
+              <span
+                className={`w-2 h-2 rounded-full shrink-0 ${
+                  fyersStatus?.connected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"
+                }`}
+                title={fyersStatus?.connected ? "Broker Connected" : "Dev Session Active"}
+              ></span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono truncate">
+              {fyersStatus?.fy_id ? fyersStatus.fy_id : "Institutional Desk"}
+            </span>
+          </div>
+        </Link>
+      </div>
     </aside>
   );
 }

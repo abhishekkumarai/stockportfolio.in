@@ -495,7 +495,7 @@ export default function ConsolidatedMasterWorkstation() {
     <div className="w-full max-w-full overflow-x-hidden p-4 sm:p-6 space-y-6">
       
       {/* 1. TOP TITLE BANNER & INSTITUTIONAL DISPATCH ACTIONS */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 mb-2">
+      <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-slate-200 mb-2">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">
@@ -511,7 +511,7 @@ export default function ConsolidatedMasterWorkstation() {
         </div>
 
         {/* Action Button Suite */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <button
             onClick={() => alert("Fyers Broker WebSocket Connected (Token: FYERS-NSE-PRO-8491)")}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 bg-white hover:bg-slate-50 rounded-md border border-slate-300 shadow-sm transition-all"

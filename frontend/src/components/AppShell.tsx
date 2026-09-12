@@ -31,11 +31,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex w-full max-w-full min-h-screen overflow-x-hidden">
       {/* Desktop Fixed Enterprise Navigation Rail */}
       <div
-        className={`hidden lg:block shrink-0 transition-[width] duration-200 ease-in-out ${
-          desktopSidebarOpen ? "w-56" : "w-0 overflow-hidden"
+        className={`hidden lg:block shrink-0 transition-[width] duration-200 ease-in-out h-screen sticky top-0 ${
+          desktopSidebarOpen ? "w-60" : "w-0 overflow-hidden"
         }`}
       >
-        <Sidebar />
+        <Sidebar onToggleCollapse={handleToggleSidebar} />
       </div>
 
       {/* Mobile Drawer Overlay */}
@@ -51,6 +51,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             <Sidebar
               onNavigate={() => setMobileDrawerOpen(false)}
               onClose={() => setMobileDrawerOpen(false)}
+              onToggleCollapse={() => setMobileDrawerOpen(false)}
             />
           </div>
         </div>
@@ -58,10 +59,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Right Main Viewport */}
       <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen overflow-x-hidden bg-slate-50">
-        {/* Top Real-Time Command Bar with Hamburger button */}
+        {/* Top Real-Time Command Bar */}
         <TopBar
           onToggleSidebar={handleToggleSidebar}
           isSidebarOpen={mobileDrawerOpen || desktopSidebarOpen}
+          isDesktopSidebarOpen={desktopSidebarOpen}
         />
 
         {/* Main Content Viewport */}
