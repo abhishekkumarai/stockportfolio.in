@@ -20,6 +20,7 @@ import {
   getToken,
   setToken,
   clearToken,
+  captureTokenFromUrl,
   getFyersStatus,
   loginUrl,
   loadPortfolio,
@@ -36,6 +37,7 @@ export default function AuthPage() {
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
   useEffect(() => {
+    captureTokenFromUrl();
     const current = getToken();
     if (current) {
       setTokenInput(current);

@@ -91,9 +91,23 @@ class FyersClient:
             os.getenv("DISABLE_AUTH", "").lower() in ("true", "1", "yes")
             or os.getenv("AUTH_DISABLED", "").lower() in ("true", "1", "yes")
         )
-        self.app_id = app_id or os.getenv("FYERS_APP_ID", "") or ("DOCKER-DEV-APP-ID" if auth_disabled else "")
-        self.secret_id = secret_id or os.getenv("FYERS_SECRET_ID", "") or ("DOCKER-DEV-SECRET" if auth_disabled else "")
-        self.redirect_uri = redirect_uri or os.getenv("FYERS_REDIRECT_URI", "")
+        self.app_id = (
+            app_id
+            or os.getenv("FYERS_APP_ID", "")
+            or os.getenv("FYERS_CLIENT_ID", "")
+            or ("DOCKER-DEV-APP-ID" if auth_disabled else "")
+        )
+        self.secret_id = (
+            secret_id
+            or os.getenv("FYERS_SECRET_ID", "")
+            or os.getenv("FYERS_SECRET_KEY", "")
+            or ("DOCKER-DEV-SECRET" if auth_disabled else "")
+        )
+        self.redirect_uri = (
+            redirect_uri
+            or os.getenv("FYERS_REDIRECT_URI", "")
+            or "http://localhost:8001/api/fyers/callback"
+        )
         self.access_token = access_token or os.getenv("FYERS_ACCESS_TOKEN", "") or ("DOCKER-LOCAL-DEV-TOKEN" if auth_disabled else "")
         self.refresh_token = ""
         self._timeout = timeout
