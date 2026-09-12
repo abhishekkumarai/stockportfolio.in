@@ -86,6 +86,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  // Full-screen dedicated view for authentication page (no sidebar, no topbar, no dashboard footer)
+  if (pathname === "/auth") {
+    return <div className="w-full min-h-screen bg-slate-950">{children}</div>;
+  }
+
   return (
     <div className="flex w-full max-w-full min-h-screen overflow-x-hidden">
       {/* Desktop Fixed Enterprise Navigation Rail */}
