@@ -4,6 +4,7 @@ import numpy as np
 import yfinance as yf
 from datetime import datetime, timedelta
 from typing import Dict, Any, List
+from app.technicals import calculate_rsi, calculate_sma
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +63,11 @@ def run_backtest(
     close_prices = hist["Close"]
     
     # 1. RSI
-    delta = close_prices.diff()
-    gain = delta.clip(lower=0)
-    loss = -delta.clip(upper=0)
-    avg_gain = gain.ewm(alpha=1/14, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/14, adjust=False).mean()
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    rsi = 100.0 - (100.0 / (1.0 + rs))
-    hist["RSI"] = rsi.fillna(50.0)
+    hist["RSI"] = calculate_rsi(close_prices, period=14)
 
     # 2. SMAs
-    hist["SMA_Fast"] = close_prices.rolling(window=sma_fast_period).mean()
-    hist["SMA_Slow"] = close_prices.rolling(window=sma_slow_period).mean()
+    hist["SMA_Fast"] = calculate_sma(close_prices, period=sma_fast_period)
+    hist["SMA_Slow"] = calculate_sma(close_prices, period=sma_slow_period)
 
     # Filter data to the active backtest period
     test_df = hist.loc[start_date:]
@@ -266,19 +260,3 @@ def run_backtest(
         "trades": trades,
         "equity_curve": daily_portfolio
     }
-
-if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
-    # Test run the backtester
-    res = run_backtest(
-        ticker_symbol="RELIANCE.NS",
-        start_date_str="2025-01-01",
-        end_date_str="2025-12-31",
-        strategy_name="RSI"
-    )
-    print("Backtest Completed:")
-    print("Strategy Return:", res["summary"]["total_return_pct"], "%")
-    print("Benchmark Return:", res["summary"]["benchmark_return_pct"], "%")
-    print("Trades Count:", res["summary"]["total_trades"])
-    print("Sharpe Ratio:", res["summary"]["sharpe_ratio"])
-    print("Max Drawdown:", res["summary"]["max_drawdown_pct"], "%")

@@ -6,14 +6,8 @@ import yfinance as yf
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
-# Ensure NLTK VADER is downloaded
-try:
-    nltk.data.find('sentiment/vader_lexicon.zip')
-except LookupError:
-    logging.info("Downloading NLTK vader_lexicon...")
-    nltk.download('vader_lexicon', quiet=True)
-
 from nltk.sentiment.vader import SentimentIntensityAnalyzer
+from app.technicals import calculate_rsi
 
 logger = logging.getLogger(__name__)
 
@@ -28,20 +22,6 @@ try:
 except Exception as e:
     logger.error(f"Error initializing NLTK Sentiment Intensity Analyzer: {e}")
     sia = None
-
-def calculate_rsi(prices: pd.Series, period: int = 14) -> pd.Series:
-    """Calculates Relative Strength Index (RSI) using standard exponential smoothing."""
-    delta = prices.diff()
-    gain = (delta.clip(lower=0))
-    loss = (-delta.clip(upper=0))
-
-    # Standard Wilder's RSI smoothing
-    avg_gain = gain.ewm(alpha=1/period, adjust=False).mean()
-    avg_loss = loss.ewm(alpha=1/period, adjust=False).mean()
-
-    rs = avg_gain / avg_loss.replace(0, np.nan)
-    rsi = 100.0 - (100.0 / (1.0 + rs))
-    return rsi.fillna(50.0)  # Default neutral for NaNs
 
 def analyze_sentiment(headlines: List[str]) -> Dict[str, Any]:
     """
