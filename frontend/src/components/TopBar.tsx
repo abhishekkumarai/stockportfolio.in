@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
-import { Search, Bell, TrendingUp, TrendingDown } from "lucide-react";
+import { Search, Bell, TrendingUp, TrendingDown, Menu, X } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 interface TickerSuggestion {
@@ -12,7 +12,12 @@ interface TickerSuggestion {
   exchange: string;
 }
 
-export default function TopBar() {
+interface TopBarProps {
+  onToggleSidebar?: () => void;
+  isSidebarOpen?: boolean;
+}
+
+export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps = {}) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [suggestions, setSuggestions] = useState<TickerSuggestion[]>([]);
@@ -94,8 +99,18 @@ export default function TopBar() {
 
   return (
     <header className="w-full max-w-full h-14 sticky top-0 z-50 bg-white border-b border-slate-200 px-4 flex items-center justify-between overflow-hidden select-none shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]">
-      {/* Left Section: Logo & Live Benchmarks */}
-      <div className="flex items-center gap-3 shrink-0 min-w-0">
+      {/* Left Section: Hamburger Menu, Logo & Live Benchmarks */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="p-1.5 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Toggle navigation menu"
+          title="Toggle Navigation Menu"
+        >
+          <Menu size={20} />
+        </button>
+
         <Link href="/" className="flex items-center gap-2 text-decoration-none">
           <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
             SP

@@ -17,10 +17,16 @@ import {
   GitFork,
   FlaskConical,
   FileText,
+  X,
 } from "lucide-react";
 import { getFyersStatus, getToken, type FyersStatus } from "@/lib/portfolioApi";
 
-export default function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
   const pathname = usePathname();
   const [fyersStatus, setFyersStatus] = useState<FyersStatus | null>(null);
   const [search, setSearch] = useState("");
@@ -55,6 +61,9 @@ export default function Sidebar() {
   const handleNav = (href: string) => {
     const [, query = ""] = href.split("?");
     setSearch(query ? `?${query}` : "");
+    if (onNavigate) {
+      onNavigate();
+    }
   };
 
   return (
@@ -68,7 +77,19 @@ export default function Sidebar() {
             </div>
             <div className="text-[11px] text-slate-400">Unified Institutional Desk</div>
           </div>
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                aria-label="Close sidebar navigation"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation Modules */}
