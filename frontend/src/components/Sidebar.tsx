@@ -32,7 +32,9 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
   const pathname = usePathname();
   const [fyersStatus, setFyersStatus] = useState<FyersStatus | null>(null);
   const [search, setSearch] = useState("");
-  const [profileSubtitle, setProfileSubtitle] = useState("Institutional Desk");
+  const [profileName, setProfileName] = useState("Portfolio Account");
+  const [profileSubtitle, setProfileSubtitle] = useState("Offline / Disconnected");
+  const [initials, setInitials] = useState("PA");
 
   useEffect(() => {
     const sync = () => setSearch(window.location.search);
@@ -44,17 +46,34 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
   useEffect(() => {
     const updateProfile = () => {
       try {
-        const p = loadPortfolio(false);
+        const p = loadPortfolio();
         const total = (p.equity?.length || 0) + (p.funds?.length || 0);
         const cid = typeof window !== "undefined" ? localStorage.getItem("stockportfolio_client_id") : null;
+        const storedName = typeof window !== "undefined" ? localStorage.getItem("stockportfolio_user_name") : null;
+
+        const displayName =
+          fyersStatus?.name ||
+          storedName ||
+          (fyersStatus?.connected ? fyersStatus.fy_id || "Broker Account" : cid ? `Account ${cid}` : "Portfolio Account");
+        setProfileName(displayName);
+
+        const parts = displayName.trim().split(/\s+/);
+        if (parts.length >= 2) {
+          setInitials(`${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase());
+        } else {
+          setInitials(displayName.slice(0, 2).toUpperCase() || "PA");
+        }
+
         if (cid && total > 0) {
           setProfileSubtitle(`${cid} • ${total} Holdings`);
         } else if (fyersStatus?.fy_id) {
           setProfileSubtitle(`${fyersStatus.fy_id}${total > 0 ? ` • ${total} Holdings` : ""}`);
         } else if (total > 0) {
-          setProfileSubtitle(`OD7237 • ${total} Holdings`);
+          setProfileSubtitle(`${total} Holdings`);
+        } else if (fyersStatus?.connected) {
+          setProfileSubtitle("Active Broker Session");
         } else {
-          setProfileSubtitle("Institutional Desk");
+          setProfileSubtitle("Offline / Disconnected");
         }
       } catch {
         // fallback
@@ -386,18 +405,28 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
           title="Manage Broker Auth & API Keys"
         >
           <div className="w-8 h-8 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 shrink-0 transition-all">
-            AK
+            {initials}
           </div>
           <div className="flex flex-col text-left min-w-0 flex-1 leading-tight">
             <div className="flex items-center justify-between gap-1">
               <span className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                Abhishek Kumar
+                {profileName}
               </span>
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
-                  fyersStatus?.connected ? "bg-emerald-500 animate-pulse" : "bg-emerald-500"
+                  fyersStatus?.connected
+                    ? "bg-emerald-500 animate-pulse"
+                    : profileSubtitle.includes("Holdings")
+                    ? "bg-blue-500"
+                    : "bg-slate-300"
                 }`}
-                title={fyersStatus?.connected ? "Broker Connected" : "Dev Session Active"}
+                title={
+                  fyersStatus?.connected
+                    ? "Broker Connected"
+                    : profileSubtitle.includes("Holdings")
+                    ? "Offline Statement Active"
+                    : "Disconnected"
+                }
               ></span>
             </div>
             <span className="text-[10px] text-slate-400 font-mono truncate">

@@ -132,8 +132,8 @@ def run_database_sync(
         engine = sqlalchemy.create_engine(db_url, connect_args={"connect_timeout": 5})
         with Session(engine) as session:
             # Check or create account
-            email = account_email or f"{client_id.lower()}@stockportfolio.in"
-            name = account_name or f"Abhishek Kumar ({client_id})"
+            email = account_email or (f"{client_id.lower()}@stockportfolio.in" if client_id else "offline@stockportfolio.in")
+            name = account_name or (f"Account ({client_id})" if client_id else "Broker Offline Portfolio")
 
             # Lookup account by email or display name
             account = session.query(Account).filter(
@@ -303,7 +303,7 @@ def process_file(
         print_banner("Database Synchronization")
         run_database_sync(
             portfolio=portfolio_req,
-            client_id=meta.client_id or "OD7237",
+            client_id=meta.client_id or "OFFLINE_CLIENT",
             as_of=meta.as_of_date,
             valuation=val,
         )

@@ -64,7 +64,7 @@ def _frontend_origin() -> Optional[str]:
     return origins[0] if origins else None
 
 
-def get_client(x_fyers_token: Optional[str] = Header(None)) -> FyersClient:
+def get_client(x_fyers_token: Optional[str] = Header(None)) -> Optional[FyersClient]:
     """Build a client for this request from the caller's own token.
 
     Falls back to FYERS_ACCESS_TOKEN so local development and scripts keep
@@ -72,13 +72,11 @@ def get_client(x_fyers_token: Optional[str] = Header(None)) -> FyersClient:
     real path — the env var is not set there.
     """
     token = x_fyers_token or os.getenv("FYERS_ACCESS_TOKEN")
-    if not token and _is_auth_disabled():
-        token = "DOCKER-LOCAL-DEV-TOKEN"
+    if not token:
+        return None
     try:
-        return FyersClient(access_token=token or None)
+        return FyersClient(access_token=token)
     except FyersError as exc:
-        if _is_auth_disabled():
-            return None
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -103,39 +101,49 @@ padding:60px;line-height:1.6">
 
 
 @router.get("/login")
-def login():
-    """Kick off the Fyers login. Open this in a browser, not from JavaScript."""
-    return RedirectResponse(FyersClient().build_auth_url())
+def login(state: str = "sp", client: Optional[FyersClient] = Depends(get_client)):
+    """Entry point for the browser: redirects to the Fyers auth screen.
+
+    Requires FYERS_APP_ID and FYERS_SECRET_ID.
+    """
+    if not client:
+        try:
+            client = FyersClient()
+        except FyersError as exc:
+            return _page("Fyers not configured", f"<p><code>{exc}</code></p>", ok=False)
+
+    if not client.app_id or not client.secret_id:
+        return _page(
+            "Fyers not configured",
+            "<p>FYERS_APP_ID and FYERS_SECRET_ID must be set in the environment.</p>",
+            ok=False,
+        )
+    return RedirectResponse(client.build_auth_url(state=state))
 
 
 @router.get("/callback")
 def callback(
-    auth_code: Optional[str] = Query(None),
-    code: Optional[str] = Query(None),
-    s: Optional[str] = Query(None),
-    message: Optional[str] = Query(None),
+    auth_code: Optional[str] = None,
+    state: Optional[str] = None,
+    client: Optional[FyersClient] = Depends(get_client),
 ):
-    """Receives the redirect from Fyers and exchanges the code for a token.
+    """Fyers redirects the user here with `?auth_code=...&state=...`.
 
-    Fyers has used both `auth_code` and `code` as the parameter name across
-    versions, so accept either rather than depending on one.
+    Exchanges the code for a 24-hour access token, writes it back into
+    .env for other local tools to pick up, and redirects to the frontend
+    with the token in the URL fragment so the SPA can store it.
     """
-    received = auth_code or code
-    if not received:
-        return _page(
-            "No auth code received",
-            f"<p>Fyers redirected here without an auth code.</p>"
-            f"<p>status: <code>{s}</code><br>message: <code>{message}</code></p>"
-            "<p>This usually means the redirect URI registered on the app does not "
-            "exactly match the one this server is configured with.</p>",
-            ok=False,
-        )
+    if not auth_code:
+        return _page("Login failed", "<p>No auth_code received from Fyers.</p>", ok=False)
+
+    if not client:
+        try:
+            client = FyersClient()
+        except FyersError as exc:
+            return _page("Fyers not configured", f"<p><code>{exc}</code></p>", ok=False)
 
     try:
-        client = FyersClient()
-        token = client.exchange_auth_code(received)
-    except FyersAuthError as exc:
-        return _page("Token exchange failed", f"<p><code>{exc}</code></p>", ok=False)
+        token = client.exchange_code_for_token(auth_code)
     except FyersError as exc:
         return _page("Could not reach Fyers", f"<p><code>{exc}</code></p>", ok=False)
 
@@ -169,19 +177,10 @@ def callback(
 @router.get("/status")
 def status(client: Optional[FyersClient] = Depends(get_client)):
     """Whether the caller's token works, verified against the Fyers profile call."""
-    if _is_auth_disabled():
-        return {
-            "connected": True,
-            "name": "Abhishek Kumar (Local Docker)",
-            "fy_id": "DOCKER-LOCAL-DEV",
-            "email": "dev@stockportfolio.local",
-            "auth_disabled": True,
-            "message": "Auth is disabled for local Docker environment.",
-        }
-    if not client.access_token:
+    if not client or not client.access_token:
         return {
             "connected": False,
-            "reason": "No access token supplied.",
+            "reason": "No active broker session or access token supplied.",
             "login_url": "/api/fyers/login",
         }
     try:
@@ -201,46 +200,21 @@ def status(client: Optional[FyersClient] = Depends(get_client)):
 
 
 @router.get("/holdings", response_model=HoldingsResponse)
-def holdings(client: FyersClient = Depends(get_client)):
+def holdings(client: Optional[FyersClient] = Depends(get_client)):
     """Delivery holdings, normalised and enriched from the NSE symbol master.
 
     Note that Fyers does not report a purchase date, so `buy_date` comes back
     null and holding-period return has to be supplied by the user.
     """
-    if _is_auth_disabled() and (not client.access_token or client.access_token == "DOCKER-LOCAL-DEV-TOKEN"):
-        sample_raw = {
-            "holdings": [
-                {"symbol": "NSE:RELIANCE-EQ", "holdingType": "T1", "quantity": 310, "costPrice": 2740.0, "marketVal": 925474.0},
-                {"symbol": "NSE:TCS-EQ", "holdingType": "T1", "quantity": 145, "costPrice": 3820.0, "marketVal": 610566.0},
-                {"symbol": "NSE:HDFCBANK-EQ", "holdingType": "T1", "quantity": 380, "costPrice": 1580.0, "marketVal": 624000.0},
-                {"symbol": "NSE:INFY-EQ", "holdingType": "T1", "quantity": 260, "costPrice": 1720.0, "marketVal": 491478.0},
-                {"symbol": "NSE:ICICIBANK-EQ", "holdingType": "T1", "quantity": 290, "costPrice": 1040.0, "marketVal": 352524.0},
-                {"symbol": "NSE:TATAMOTORS-EQ", "holdingType": "T1", "quantity": 340, "costPrice": 920.0, "marketVal": 335410.0},
-                {"symbol": "NSE:LT-EQ", "holdingType": "T1", "quantity": 120, "costPrice": 3450.0, "marketVal": 434400.0},
-                {"symbol": "NSE:BHARTIARTL-EQ", "holdingType": "T1", "quantity": 250, "costPrice": 1420.0, "marketVal": 385050.0},
-            ],
-            "overall": {
-                "total_investment": 3720000.0,
-                "total_current_value": 4158902.0,
-                "total_pnl": 438902.0,
-                "pnl_percentage": 11.8,
-            },
-        }
-        return HoldingsResponse.from_fyers(sample_raw)
+    if not client or not client.access_token:
+        return HoldingsResponse(
+            holdings=[],
+            overall={"total_investment": 0.0, "total_current_value": 0.0, "total_pnl": 0.0, "pnl_percentage": 0.0},
+            count=0,
+        )
     try:
         return HoldingsResponse.from_fyers(client.holdings())
     except FyersError as exc:
-        if _is_auth_disabled():
-            sample_raw = {
-                "holdings": [
-                    {"symbol": "NSE:RELIANCE-EQ", "holdingType": "T1", "quantity": 310, "costPrice": 2740.0, "marketVal": 925474.0},
-                    {"symbol": "NSE:TCS-EQ", "holdingType": "T1", "quantity": 145, "costPrice": 3820.0, "marketVal": 610566.0},
-                    {"symbol": "NSE:HDFCBANK-EQ", "holdingType": "T1", "quantity": 380, "costPrice": 1580.0, "marketVal": 624000.0},
-                    {"symbol": "NSE:INFY-EQ", "holdingType": "T1", "quantity": 260, "costPrice": 1720.0, "marketVal": 491478.0},
-                ],
-                "overall": {"total_investment": 2500000.0, "total_current_value": 2651518.0, "total_pnl": 151518.0, "pnl_percentage": 6.06},
-            }
-            return HoldingsResponse.from_fyers(sample_raw)
         raise _raise_for(exc)
 
 

@@ -27,7 +27,6 @@ import {
   type TargetRebalancePlan,
 } from "@/lib/quantApi";
 import {
-  DEFAULT_INSTITUTIONAL_PORTFOLIO,
   EMPTY_PORTFOLIO,
   formatCurrency,
   formatNumber,
@@ -225,11 +224,6 @@ export default function QuantConsole() {
 
   const equityCount = portfolio.equity.length;
 
-  const loadQuantBasket = () => {
-    setPortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
-    savePortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
-  };
-
   const guard = async (label: string, work: () => Promise<void>) => {
     setBusy(label);
     setError(null);
@@ -330,9 +324,9 @@ export default function QuantConsole() {
           </p>
         </div>
         <div>
-          <button className="secondary-button" onClick={loadQuantBasket}>
-            ⚡ Load Quant Benchmark Basket
-          </button>
+          <a className="secondary-button" href="/auth" style={{ textDecoration: "none" }}>
+            📂 Import Statement (.xlsx)
+          </a>
         </div>
       </div>
 
@@ -340,14 +334,14 @@ export default function QuantConsole() {
         <div className="glass-panel" style={{ marginBottom: 20, borderColor: "var(--color-hold)", padding: "16px 20px" }}>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div>
-              <strong style={{ color: "var(--color-hold)" }}>Viewing Simulated Institutional Benchmark Basket</strong>
+              <strong style={{ color: "var(--color-hold)" }}>Portfolio has insufficient equities for optimization</strong>
               <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", fontSize: "0.85rem" }}>
-                Active model: Nifty 50 Large-Cap Core (Reliance, TCS, HDFC Bank, Infosys, ICICI Bank, Tata Motors, L&T, Bharti Airtel).
+                At least 2 equity holdings are required to calculate the covariance matrix, risk parity, and factor attribution.
               </p>
             </div>
-            <button className="glowing-button text-xs" onClick={loadQuantBasket}>
-              ⚡ Sync to My Portfolio
-            </button>
+            <a className="glowing-button text-xs" href="/auth" style={{ textDecoration: "none" }}>
+              📂 Import Broker Statement
+            </a>
           </div>
         </div>
       )}

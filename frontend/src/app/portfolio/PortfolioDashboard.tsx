@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  DEFAULT_INSTITUTIONAL_PORTFOLIO,
   EMPTY_PORTFOLIO,
   PRICE_SOURCE_LABEL,
   StoredPortfolio,
@@ -197,12 +196,6 @@ export default function PortfolioDashboard() {
     [portfolio, isEmpty]
   );
 
-  const loadInstitutionalSeed = () => {
-    setPortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
-    savePortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
-    setNotice("Loaded Institutional Seed Portfolio (Reliance, TCS, HDFC Bank, Infosys, ICICI Bank, L&T, Bharti Airtel).");
-  };
-
   useEffect(() => {
     if (!hydrated) return;
     const controller = new AbortController();
@@ -296,9 +289,9 @@ export default function PortfolioDashboard() {
               Connect Fyers
             </a>
           )}
-          <button className="secondary-button" onClick={loadInstitutionalSeed}>
-            ⚡ Load Institutional Seed
-          </button>
+          <a className="secondary-button" href="/auth" style={{ textDecoration: "none" }}>
+            📂 Import Statement (.xlsx)
+          </a>
           <button className="secondary-button" onClick={() => refresh()} disabled={loading || isEmpty}>
             {loading ? "Evaluating…" : "Refresh Analytics"}
           </button>
@@ -359,14 +352,14 @@ export default function PortfolioDashboard() {
 
       {isEmpty ? (
         <div className="glass-panel" style={{ textAlign: "center", padding: "48px 24px", marginBottom: 24 }}>
-          <h3 style={{ marginTop: 0 }}>No custom holdings configured</h3>
+          <h3 style={{ marginTop: 0 }}>No holdings loaded</h3>
           <p style={{ color: "var(--text-secondary)", maxWidth: 520, margin: "0 auto 20px" }}>
-            Connect Fyers, add individual stocks below, or load the institutional seed portfolio to immediately unlock the Wealth Cone (10Y Monte Carlo), Value at Risk (VaR 95%), and Tax Rebalancing.
+            Import your broker holdings statement (.xlsx) or connect your Fyers broker to view your institutional analytics, Monte Carlo wealth cone, and risk radar.
           </p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-            <button className="glowing-button" onClick={loadInstitutionalSeed}>
-              ⚡ Load Institutional Seed Portfolio
-            </button>
+            <a className="glowing-button" href="/auth" style={{ textDecoration: "none" }}>
+              📂 Import Broker Statement
+            </a>
             <a className="secondary-button" href={loginUrl()} style={{ textDecoration: "none" }}>
               Connect Fyers Broker
             </a>

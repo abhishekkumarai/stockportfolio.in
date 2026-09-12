@@ -229,16 +229,10 @@ export function isAuthDisabled(): boolean {
 
 export function getToken(): string | null {
   if (typeof window === "undefined") {
-    if (process.env.NEXT_PUBLIC_DISABLE_AUTH === "true") {
-      return "DOCKER-LOCAL-DEV-TOKEN";
-    }
     return null;
   }
   const token = window.sessionStorage.getItem(TOKEN_KEY);
   if (token) return token;
-  if (isAuthDisabled()) {
-    return "DOCKER-LOCAL-DEV-TOKEN";
-  }
   return null;
 }
 
@@ -473,47 +467,19 @@ export interface StoredPortfolio {
 
 export const EMPTY_PORTFOLIO: StoredPortfolio = { equity: [], funds: [], cash: 0 };
 
-export const DEFAULT_INSTITUTIONAL_PORTFOLIO: StoredPortfolio = {
-  equity: [
-    { symbol: "RELIANCE", quantity: 310, avg_cost: 2740.0, buy_date: "2023-04-12" },
-    { symbol: "TCS", quantity: 145, avg_cost: 3820.0, buy_date: "2023-06-18" },
-    { symbol: "HDFCBANK", quantity: 380, avg_cost: 1580.0, buy_date: "2023-09-05" },
-    { symbol: "INFY", quantity: 260, avg_cost: 1720.0, buy_date: "2023-08-22" },
-    { symbol: "ICICIBANK", quantity: 290, avg_cost: 1040.0, buy_date: "2023-10-15" },
-    { symbol: "TATAMOTORS", quantity: 340, avg_cost: 920.0, buy_date: "2023-11-02" },
-    { symbol: "LT", quantity: 120, avg_cost: 3450.0, buy_date: "2023-07-19" },
-    { symbol: "BHARTIARTL", quantity: 250, avg_cost: 1420.0, buy_date: "2024-01-10" },
-  ],
-  funds: [
-    { scheme_code: 120503, units: 1450.5, avg_nav: 68.4, buy_date: "2023-03-15" },
-  ],
-  cash: 150000,
-};
-
-export function loadPortfolio(allowDefaultSeed: boolean = true): StoredPortfolio {
-  if (typeof window === "undefined") return allowDefaultSeed ? DEFAULT_INSTITUTIONAL_PORTFOLIO : EMPTY_PORTFOLIO;
+export function loadPortfolio(): StoredPortfolio {
+  if (typeof window === "undefined") return EMPTY_PORTFOLIO;
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      if (allowDefaultSeed) {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_INSTITUTIONAL_PORTFOLIO));
-        return DEFAULT_INSTITUTIONAL_PORTFOLIO;
-      }
-      return EMPTY_PORTFOLIO;
-    }
+    if (!raw) return EMPTY_PORTFOLIO;
     const parsed = JSON.parse(raw);
-    const result: StoredPortfolio = {
+    return {
       equity: Array.isArray(parsed.equity) ? parsed.equity : [],
       funds: Array.isArray(parsed.funds) ? parsed.funds : [],
       cash: typeof parsed.cash === "number" ? parsed.cash : 0,
     };
-    if (allowDefaultSeed && result.equity.length === 0 && result.funds.length === 0) {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_INSTITUTIONAL_PORTFOLIO));
-      return DEFAULT_INSTITUTIONAL_PORTFOLIO;
-    }
-    return result;
   } catch {
-    return allowDefaultSeed ? DEFAULT_INSTITUTIONAL_PORTFOLIO : EMPTY_PORTFOLIO;
+    return EMPTY_PORTFOLIO;
   }
 }
 

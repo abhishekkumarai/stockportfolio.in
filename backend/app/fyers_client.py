@@ -101,14 +101,13 @@ class FyersClient:
             secret_id
             or os.getenv("FYERS_SECRET_ID", "")
             or os.getenv("FYERS_SECRET_KEY", "")
-            or ("DOCKER-DEV-SECRET" if auth_disabled else "")
         )
         self.redirect_uri = (
             redirect_uri
             or os.getenv("FYERS_REDIRECT_URI", "")
             or "http://localhost:8001/api/fyers/callback"
         )
-        self.access_token = access_token or os.getenv("FYERS_ACCESS_TOKEN", "") or ("DOCKER-LOCAL-DEV-TOKEN" if auth_disabled else "")
+        self.access_token = access_token or os.getenv("FYERS_ACCESS_TOKEN", "")
         self.refresh_token = ""
         self._timeout = timeout
         # Shared by default: the quota belongs to the app key, and a new client

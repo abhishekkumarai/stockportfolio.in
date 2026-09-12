@@ -29,7 +29,6 @@ import {
   loginUrl,
   loadPortfolio,
   savePortfolio,
-  DEFAULT_INSTITUTIONAL_PORTFOLIO,
   getOfflineFiles,
   importOfflineStatement,
   uploadStatementFile,
@@ -68,7 +67,7 @@ export default function AuthPage() {
   }, []);
 
   const updateHoldingsCount = () => {
-    const p = loadPortfolio(false);
+    const p = loadPortfolio();
     setCurrentHoldingsCount({
       equity: p.equity.length,
       funds: p.funds.length,
@@ -117,21 +116,18 @@ export default function AuthPage() {
   };
 
   const handleActivateDemoMode = () => {
-    const demoToken = "FYERS-DEMO-INSTITUTIONAL-PRO-DESK-TOKEN";
+    const demoToken = "FYERS-DEMO-TOKEN";
     setToken(demoToken);
     setTokenInput(demoToken);
     setStatus({
       connected: true,
-      name: "Abhishek Kumar (Institutional Desk)",
-      fy_id: "FY-PRO-9821",
-      email: "abhishek@institutional.desk",
+      name: "Demo Account",
+      fy_id: "DEMO-CLIENT",
+      email: "demo@stockportfolio.in",
     });
-    savePortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
-    updateHoldingsCount();
-    setActiveImport(null);
     setMessage({
-      type: "success",
-      text: "Activated Institutional Demo Mode with pre-seeded bluechip portfolio and simulated derivatives stream!",
+      type: "info",
+      text: "Activated demo broker session.",
     });
   };
 
@@ -143,20 +139,21 @@ export default function AuthPage() {
         savePortfolio(result.portfolio);
         setActiveImport(result);
         updateHoldingsCount();
-        const cid = result.statement?.metadata?.client_id || "OD7237";
+        const cid = result.statement?.metadata?.client_id || result.report?.client_id || "STATEMENT";
         if (typeof window !== "undefined") {
           localStorage.setItem("stockportfolio_client_id", cid);
+          localStorage.setItem("stockportfolio_user_name", result.statement?.metadata?.client_id ? `Client ${cid}` : "Statement Account");
           window.dispatchEvent(new Event("portfolio-updated"));
         }
         setStatus({
           connected: true,
-          name: `Abhishek Kumar (${cid})`,
+          name: result.statement?.metadata?.client_id ? `Client ${cid}` : "Statement Account",
           fy_id: cid,
           email: `${cid.toLowerCase()}@stockportfolio.in`,
         });
         setMessage({
           type: "success",
-          text: `Successfully imported ${cid} statement! Loaded ${result.report.equities_imported} equities and ${result.report.funds_imported} mutual funds (Total NAV: ${formatCurrency(result.valuation?.totals?.current_value ?? 0)}).`,
+          text: `Successfully imported statement! Loaded ${result.report.equities_imported} equities and ${result.report.funds_imported} mutual funds (Total NAV: ${formatCurrency(result.valuation?.totals?.current_value ?? 0)}).`,
         });
       }
     } catch (err: any) {
@@ -182,11 +179,12 @@ export default function AuthPage() {
         const cid = result.statement?.metadata?.client_id || "UPLOADED";
         if (typeof window !== "undefined") {
           localStorage.setItem("stockportfolio_client_id", cid);
+          localStorage.setItem("stockportfolio_user_name", result.statement?.metadata?.client_id ? `Client ${cid}` : "Uploaded Statement");
           window.dispatchEvent(new Event("portfolio-updated"));
         }
         setStatus({
           connected: true,
-          name: `Abhishek Kumar (${cid})`,
+          name: result.statement?.metadata?.client_id ? `Client ${cid}` : "Uploaded Statement",
           fy_id: cid,
           email: `${cid.toLowerCase()}@stockportfolio.in`,
         });
@@ -361,68 +359,91 @@ export default function AuthPage() {
 
         {/* Offline Files Found in ignore_offline */}
         <div className="space-y-4">
-          <div className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-slate-900 font-mono">
-                    holdings-OD7237.xlsx
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-100 text-emerald-800">
-                    Detected in ignore_offline
-                  </span>
-                </div>
-                <p className="text-xs text-slate-500 mt-1 mb-0">
-                  Client ID: <span className="font-mono font-semibold text-slate-700">OD7237</span> • 13 Holdings (8 Equities + 5 Mutual Funds) • As of 2026-09-07
-                </p>
-              </div>
+          {offlineFiles.length > 0 ? (
+            offlineFiles.map((file) => (
+              <div key={file.name} className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900 font-mono">
+                        {file.name}
+                      </span>
+                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-100 text-emerald-800">
+                        Detected in ignore_offline
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 mb-0 font-mono">
+                      Size: {(file.size_bytes / 1024).toFixed(1)} KB • Modified:{" "}
+                      {file.modified_at ? new Date(file.modified_at).toLocaleDateString() : "Recent"}
+                    </p>
+                  </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleImportOfflineFile("holdings-OD7237.xlsx")}
-                  disabled={importingOffline}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md shadow-sm transition-all"
-                >
-                  {importingOffline ? (
-                    <>
-                      <RefreshCw size={14} className="animate-spin" />
-                      <span>Parsing & Mapping AMFI...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={14} />
-                      <span>Import & Apply OD7237 Portfolio</span>
-                    </>
-                  )}
-                </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleImportOfflineFile(file.name)}
+                      disabled={importingOffline}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md shadow-sm transition-all"
+                    >
+                      {importingOffline ? (
+                        <>
+                          <RefreshCw size={14} className="animate-spin" />
+                          <span>Parsing & Mapping AMFI...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={14} />
+                          <span>Import & Apply {file.name.replace(/\.xlsx$/i, "")}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* If activeImport has been loaded, show diagnostics pill */}
+                {activeImport && (
+                  <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Client ID</span>
+                      <span className="font-bold text-slate-800 font-mono">
+                        {activeImport.statement?.metadata?.client_id || activeImport.report?.client_id || "Imported"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Portfolio NAV</span>
+                      <span className="font-bold text-slate-900 font-mono">
+                        {formatCurrency(activeImport.valuation?.totals?.current_value ?? 0)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Unrealized P&L</span>
+                      <span
+                        className={`font-bold font-mono ${
+                          (activeImport.valuation?.totals?.pnl ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
+                        }`}
+                      >
+                        {(activeImport.valuation?.totals?.pnl ?? 0) >= 0 ? "+" : ""}
+                        {formatCurrency(activeImport.valuation?.totals?.pnl ?? 0)} (
+                        {formatPct(activeImport.valuation?.totals?.pnl_pct ?? 0)})
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px] font-mono uppercase">AMFI Resolution</span>
+                      <span className="font-bold text-emerald-600 font-mono">
+                        {activeImport.report?.funds_imported ?? 0} Funds Mapped
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
+            ))
+          ) : (
+            <div className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80 text-center text-xs text-slate-500">
+              No offline statement files detected in{" "}
+              <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">ignore_offline/</code>.
+              Place an export file in that directory or upload one below.
             </div>
-
-            {/* If activeImport has been loaded, show diagnostics pill */}
-            {activeImport && (
-              <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Client ID</span>
-                  <span className="font-bold text-slate-800 font-mono">{activeImport.statement?.metadata?.client_id || "OD7237"}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Portfolio NAV</span>
-                  <span className="font-bold text-slate-900 font-mono">{formatCurrency(activeImport.valuation?.totals?.current_value ?? 0)}</span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Unrealized P&L</span>
-                  <span className="font-bold text-emerald-700 font-mono">
-                    +{formatCurrency(activeImport.valuation?.totals?.pnl ?? 0)} ({formatPct(activeImport.valuation?.totals?.pnl_pct ?? 0)})
-                  </span>
-                </div>
-                <div>
-                  <span className="text-slate-400 block text-[10px] font-mono uppercase">AMFI Resolution</span>
-                  <span className="font-bold text-emerald-600 font-mono">100% (5/5 Mapped)</span>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* Custom Upload Dropzone */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white rounded-lg border border-dashed border-slate-300 hover:border-blue-400 transition-colors gap-3">
