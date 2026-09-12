@@ -25,6 +25,8 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  ChevronLeft,
+  SlidersHorizontal,
   Layers,
   Sparkles,
 } from "lucide-react";
@@ -191,6 +193,290 @@ export default function ConsolidatedMasterWorkstation() {
       item.name.toLowerCase().includes(tableSearch.toLowerCase());
     return matchesSector && matchesSearch;
   });
+
+  // Table density & pagination states
+  const [isCompactDensity, setIsCompactDensity] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Top Alpha Picks (Decile 10) Dataset
+  const alphaPicks = [
+    {
+      symbol: "TRENT",
+      name: "Trent Ltd",
+      sector: "Retail & Consumption",
+      decile: "Decile 10",
+      expectedAlpha: "+4.62%",
+      momentumScore: 99,
+      piotroski: 8,
+      peRatio: 112.4,
+      rocePct: 28.4,
+      catalyst: "Zudio Tier-2/3 Rapid Store Rollout",
+      sentiment: "Strong Bullish",
+    },
+    {
+      symbol: "BEL",
+      name: "Bharat Electronics Ltd",
+      sector: "Defense & Aerospace",
+      decile: "Decile 10",
+      expectedAlpha: "+4.18%",
+      momentumScore: 96,
+      piotroski: 9,
+      peRatio: 42.5,
+      rocePct: 31.2,
+      catalyst: "Indigenous Defense Capex Supercycle",
+      sentiment: "Strong Bullish",
+    },
+    {
+      symbol: "DIXON",
+      name: "Dixon Technologies",
+      sector: "Electronics EMS",
+      decile: "Decile 10",
+      expectedAlpha: "+3.95%",
+      momentumScore: 94,
+      piotroski: 8,
+      peRatio: 88.2,
+      rocePct: 26.5,
+      catalyst: "Smartphone PLI & Display Component Localization",
+      sentiment: "Bullish",
+    },
+    {
+      symbol: "PERSISTENT",
+      name: "Persistent Systems",
+      sector: "IT & Software",
+      decile: "Decile 10",
+      expectedAlpha: "+3.82%",
+      momentumScore: 92,
+      piotroski: 8,
+      peRatio: 54.0,
+      rocePct: 25.1,
+      catalyst: "Generative AI Enterprise Spend & Cloud Modernization",
+      sentiment: "Bullish",
+    },
+    {
+      symbol: "POLYCAB",
+      name: "Polycab India Ltd",
+      sector: "Industrials & Cables",
+      decile: "Decile 10",
+      expectedAlpha: "+3.65%",
+      momentumScore: 91,
+      piotroski: 9,
+      peRatio: 46.8,
+      rocePct: 29.8,
+      catalyst: "Grid Modernization & Renewable Power T&D Boom",
+      sentiment: "Strong Bullish",
+    },
+    {
+      symbol: "SUZLON",
+      name: "Suzlon Energy Ltd",
+      sector: "Energy & Power",
+      decile: "Decile 10",
+      expectedAlpha: "+3.45%",
+      momentumScore: 89,
+      piotroski: 7,
+      peRatio: 58.4,
+      rocePct: 24.2,
+      catalyst: "Record 5.4GW Wind Energy Order Book",
+      sentiment: "Bullish",
+    },
+  ];
+
+  // Option Chain Matrix Dataset (ATM 24,850)
+  const optionChain = [
+    {
+      strike: 24500,
+      tag: "Put Wall Support (1.85 Cr OI)",
+      callOi: "22.4L",
+      callOiChg: "-1.2L",
+      callIv: "12.5%",
+      callLtp: 395.2,
+      putLtp: 28.5,
+      putIv: "14.8%",
+      putOiChg: "+38.2L",
+      putOi: "185.2L",
+      isPutWall: true,
+    },
+    {
+      strike: 24600,
+      tag: "",
+      callOi: "34.2L",
+      callOiChg: "+2.1L",
+      callIv: "12.8%",
+      callLtp: 312.4,
+      putLtp: 42.1,
+      putIv: "14.1%",
+      putOiChg: "+14.5L",
+      putOi: "88.5L",
+    },
+    {
+      strike: 24700,
+      tag: "",
+      callOi: "45.6L",
+      callOiChg: "+5.4L",
+      callIv: "13.0%",
+      callLtp: 228.8,
+      putLtp: 64.5,
+      putIv: "13.8%",
+      putOiChg: "+18.2L",
+      putOi: "102.3L",
+    },
+    {
+      strike: 24800,
+      tag: "Max Pain Strike",
+      callOi: "62.8L",
+      callOiChg: "+14.2L",
+      callIv: "13.2%",
+      callLtp: 152.6,
+      putLtp: 96.2,
+      putIv: "13.5%",
+      putOiChg: "+22.4L",
+      putOi: "145.2L",
+      isMaxPain: true,
+    },
+    {
+      strike: 24850,
+      tag: "ATM Straddle Pivot",
+      callOi: "78.4L",
+      callOiChg: "+22.1L",
+      callIv: "13.4%",
+      callLtp: 118.5,
+      putLtp: 119.8,
+      putIv: "13.4%",
+      putOiChg: "+24.5L",
+      putOi: "138.9L",
+      isAtm: true,
+    },
+    {
+      strike: 24900,
+      tag: "",
+      callOi: "95.1L",
+      callOiChg: "+31.4L",
+      callIv: "13.6%",
+      callLtp: 88.2,
+      putLtp: 148.4,
+      putIv: "13.2%",
+      putOiChg: "-6.4L",
+      putOi: "115.4L",
+    },
+    {
+      strike: 25000,
+      tag: "Call Wall Resistance / Collar Leg",
+      callOi: "142.5L",
+      callOiChg: "+48.2L",
+      callIv: "14.1%",
+      callLtp: 46.2,
+      putLtp: 215.1,
+      putIv: "13.0%",
+      putOiChg: "-12.1L",
+      putOi: "72.1L",
+      isCallWall: true,
+    },
+    {
+      strike: 25100,
+      tag: "",
+      callOi: "88.2L",
+      callOiChg: "+16.5L",
+      callIv: "14.5%",
+      callLtp: 24.1,
+      putLtp: 298.0,
+      putIv: "12.9%",
+      putOiChg: "-8.5L",
+      putOi: "41.6L",
+    },
+  ];
+
+  // Strategy Backtest Logs Dataset
+  const backtestLogs = [
+    {
+      strategy: "Dual-Factor Alpha (Momentum + Piotroski)",
+      benchmark: "Nifty 500 TRI",
+      isSharpe: 2.38,
+      oosSharpe: 1.94,
+      sampleRatio: "0.82",
+      maxDrawdown: "-6.4%",
+      winRate: "64.2%",
+      annualizedReturn: "+28.6%",
+      rebalanceFreq: "Monthly",
+      status: "Active Production",
+    },
+    {
+      strategy: "Hierarchical Risk Parity (HRP Min-VaR)",
+      benchmark: "Nifty 50 Equal Weight",
+      isSharpe: 2.12,
+      oosSharpe: 1.88,
+      sampleRatio: "0.89",
+      maxDrawdown: "-4.8%",
+      winRate: "59.8%",
+      annualizedReturn: "+19.4%",
+      rebalanceFreq: "Quarterly",
+      status: "Active Production",
+    },
+    {
+      strategy: "Volatility-Adjusted Tail Collar (Systematic Hedge)",
+      benchmark: "Cash + Nifty Put",
+      isSharpe: 1.62,
+      oosSharpe: 1.58,
+      sampleRatio: "0.98",
+      maxDrawdown: "-3.2%",
+      winRate: "71.4%",
+      annualizedReturn: "+13.8%",
+      rebalanceFreq: "Expiry-Cycle",
+      status: "Active Hedge",
+    },
+    {
+      strategy: "RSI Mean Reversion + Bollinger Band Bounce",
+      benchmark: "Nifty Bank",
+      isSharpe: 1.76,
+      oosSharpe: 1.34,
+      sampleRatio: "0.76",
+      maxDrawdown: "-11.2%",
+      winRate: "52.1%",
+      annualizedReturn: "+15.2%",
+      rebalanceFreq: "Weekly",
+      status: "Paper Trading",
+    },
+  ];
+
+  // Filtered alpha picks
+  const filteredAlphaPicks = alphaPicks.filter((item) => {
+    const matchesSector = selectedSector === "all" || item.sector.toLowerCase().includes(selectedSector.toLowerCase().split(" ")[0]);
+    const matchesSearch =
+      item.symbol.toLowerCase().includes(tableSearch.toLowerCase()) ||
+      item.name.toLowerCase().includes(tableSearch.toLowerCase());
+    return matchesSector && matchesSearch;
+  });
+
+  // Export CSV Handler
+  const handleExportCSV = () => {
+    let csvContent = "data:text/csv;charset=utf-8,";
+    if (activeTableTab === "holdings") {
+      csvContent += "Symbol,Name,Sector,Weight(%),Qty,Avg Buy,LTP,Total Value,Unrealized PnL,VaR,Piotroski,Catalyst\n";
+      filteredHoldings.forEach((h) => {
+        csvContent += `"${h.symbol}","${h.name}","${h.sector}",${h.weight},${h.qty},${h.avgBuy},${h.ltp},${h.totalValue},${h.unrealizedPnL},"${h.varContrib}","${h.piotroski}/9","${h.catalyst}"\n`;
+      });
+    } else if (activeTableTab === "alpha") {
+      csvContent += "Symbol,Name,Sector,Decile,Expected Alpha,Momentum,Piotroski,PE,ROCE,Catalyst\n";
+      filteredAlphaPicks.forEach((a) => {
+        csvContent += `"${a.symbol}","${a.name}","${a.sector}","${a.decile}","${a.expectedAlpha}",${a.momentumScore},"${a.piotroski}/9",${a.peRatio},${a.rocePct},"${a.catalyst}"\n`;
+      });
+    } else if (activeTableTab === "options") {
+      csvContent += "Call OI,Call Chg,Call IV,Call LTP,Strike,Put LTP,Put IV,Put Chg,Put OI\n";
+      optionChain.forEach((o) => {
+        csvContent += `"${o.callOi}","${o.callOiChg}","${o.callIv}",${o.callLtp},${o.strike},${o.putLtp},"${o.putIv}","${o.putOiChg}","${o.putOi}"\n`;
+      });
+    } else {
+      csvContent += "Strategy,Benchmark,IS Sharpe,OOS Sharpe,Sample Ratio,Max DD,Win Rate,CAGR,Status\n";
+      backtestLogs.forEach((b) => {
+        csvContent += `"${b.strategy}","${b.benchmark}",${b.isSharpe},${b.oosSharpe},"${b.sampleRatio}","${b.maxDrawdown}","${b.winRate}","${b.annualizedReturn}","${b.status}"\n`;
+      });
+    }
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `stockportfolio_${activeTableTab}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Handle rebalance execution
   const handleExecuteBasket = () => {
@@ -574,6 +860,21 @@ export default function ConsolidatedMasterWorkstation() {
                 </div>
               </div>
             )}
+            {/* Mini Footer Metrics (Master Console Spec) */}
+            <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-center text-xs font-mono">
+              <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                <span className="text-[10px] text-slate-400 block uppercase">Ann. Volatility</span>
+                <span className="text-xs font-bold text-slate-900">14.2%</span>
+              </div>
+              <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                <span className="text-[10px] text-slate-400 block uppercase">Max Hist Drawdown</span>
+                <span className="text-xs font-bold text-red-600">-7.12%</span>
+              </div>
+              <div className="p-2 bg-slate-50 rounded border border-slate-200">
+                <span className="text-[10px] text-slate-400 block uppercase">Sortino Ratio</span>
+                <span className="text-xs font-bold text-emerald-600">2.78</span>
+              </div>
+            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
@@ -755,201 +1056,719 @@ export default function ConsolidatedMasterWorkstation() {
               <option value="IT & Software">IT & Software</option>
               <option value="Retail & Consumption">Retail & Consumption</option>
             </select>
+
+            {/* Density Button */}
+            <button
+              onClick={() => setIsCompactDensity(!isCompactDensity)}
+              className={`h-8 px-2.5 bg-white hover:bg-slate-50 text-xs rounded border transition-colors inline-flex items-center gap-1.5 ${
+                isCompactDensity ? "border-blue-500 text-blue-700 bg-blue-50/50 font-semibold" : "border-slate-300 text-slate-700"
+              }`}
+              title="Toggle Row Padding Density"
+            >
+              <SlidersHorizontal size={14} className={isCompactDensity ? "text-blue-600" : "text-slate-500"} />
+              <span>Density</span>
+              {isCompactDensity && <span className="text-[10px] font-bold text-blue-600 font-mono">(Compact)</span>}
+            </button>
+
+            {/* Export CSV Button */}
+            <button
+              onClick={handleExportCSV}
+              className="h-8 px-2.5 bg-white hover:bg-slate-50 text-slate-700 text-xs rounded border border-slate-300 inline-flex items-center gap-1.5 transition-colors"
+              title="Export Current Table as CSV"
+            >
+              <Download size={14} className="text-slate-500" />
+              <span>Export CSV</span>
+            </button>
           </div>
         </div>
 
-        {/* DESKTOP VIEW: High-Density Institutional Table (Hidden on small mobile) */}
-        <div className="hidden md:block overflow-x-auto w-full min-w-0">
-          <table className="w-full min-w-[960px] text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
-                <th className="py-2.5 px-4 font-mono">TICKER & ASSET</th>
-                <th className="py-2.5 px-3 font-mono">WEIGHT %</th>
-                <th className="py-2.5 px-3 font-mono text-right">QTY</th>
-                <th className="py-2.5 px-3 font-mono text-right">AVG BUY (₹)</th>
-                <th className="py-2.5 px-3 font-mono text-right">LTP (₹)</th>
-                <th className="py-2.5 px-3 font-mono text-right">TOTAL VALUE (₹)</th>
-                <th className="py-2.5 px-3 font-mono text-right">UNREALIZED P&L</th>
-                <th className="py-2.5 px-3 font-mono text-center">VAR CONTRIB</th>
-                <th className="py-2.5 px-3 font-mono text-center">PIOTROSKI</th>
-                <th className="py-2.5 px-3 font-mono text-center">CATALYST / ML ALPHA</th>
-                <th className="py-2.5 px-4 font-mono text-center">QUICK ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-sans">
+        {/* ============================================================ */}
+        {/* TAB 1: ACTIVE PORTFOLIO HOLDINGS & FORENSICS                 */}
+        {/* ============================================================ */}
+        {activeTableTab === "holdings" && (
+          <>
+            {/* DESKTOP VIEW */}
+            <div className="hidden md:block overflow-x-auto w-full min-w-0">
+              <table className="w-full min-w-[960px] text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
+                    <th className="py-2.5 px-4 font-mono">TICKER & ASSET</th>
+                    <th className="py-2.5 px-3 font-mono">WEIGHT %</th>
+                    <th className="py-2.5 px-3 font-mono text-right">QTY</th>
+                    <th className="py-2.5 px-3 font-mono text-right">AVG BUY (₹)</th>
+                    <th className="py-2.5 px-3 font-mono text-right">LTP (₹)</th>
+                    <th className="py-2.5 px-3 font-mono text-right">TOTAL VALUE (₹)</th>
+                    <th className="py-2.5 px-3 font-mono text-right">UNREALIZED P&L</th>
+                    <th className="py-2.5 px-3 font-mono text-center">VAR CONTRIB</th>
+                    <th className="py-2.5 px-3 font-mono text-center">PIOTROSKI</th>
+                    <th className="py-2.5 px-3 font-mono text-center">CATALYST / ML ALPHA</th>
+                    <th className="py-2.5 px-4 font-mono text-center">QUICK ACTIONS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans">
+                  {filteredHoldings.map((item) => (
+                    <tr key={item.symbol} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"}`}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-mono font-bold text-xs">
+                            {item.symbol.charAt(0)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
+                              <span>{item.symbol}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              {item.name} • <span className="text-slate-600 font-medium">{item.sector}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Weight Progress */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"}`}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-900 tabular-nums w-10">
+                            {item.weight}%
+                          </span>
+                          <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-600 rounded-full" style={{ width: `${item.weight * 5}%` }}></div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono font-medium text-slate-800 tabular-nums`}>
+                        {item.qty}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono text-slate-500 tabular-nums`}>
+                        ₹{item.avgBuy.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono font-semibold text-slate-900 tabular-nums`}>
+                        ₹{item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono font-bold text-slate-900 tabular-nums`}>
+                        ₹{item.totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </td>
+
+                      {/* Unrealized P&L */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono tabular-nums`}>
+                        <div className="text-emerald-600 font-bold">
+                          +₹{item.unrealizedPnL.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-[10px] text-emerald-600 font-semibold">
+                          (+{item.unrealizedPnLPct}%)
+                        </div>
+                      </td>
+
+                      {/* VaR Contrib */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                          {item.varContrib}
+                        </span>
+                      </td>
+
+                      {/* Piotroski Score Badge */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <button
+                          onClick={() => setSelectedForensicHolding(item)}
+                          className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                        >
+                          <span>{item.piotroski}/9</span>
+                          <span className="text-[10px]">{item.piotroskiLabel}</span>
+                        </button>
+                      </td>
+
+                      {/* Catalyst / Signal Tag */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <div className="flex flex-col items-center gap-0.5">
+                          <span className="text-[11px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                            {item.catalyst}
+                          </span>
+                          {item.lockWarning && (
+                            <span className="text-[9.5px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-1.5 rounded">
+                              {item.lockWarning}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"} text-center`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          {item.lockWarning ? (
+                            <button
+                              onClick={() => alert(`Position ${item.symbol} is tax-locked under Budget 2024-25 LTCG Rule (Day 342/365). Rebalancing trims disabled.`)}
+                              className="px-2 py-1 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-semibold transition"
+                            >
+                              Locked
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => setIsRebalanceModalOpen(true)}
+                              className="px-2 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded text-[11px] font-semibold transition"
+                            >
+                              Rebalance
+                            </button>
+                          )}
+                          <Link
+                            href={`/analyse/${item.symbol}`}
+                            className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded transition"
+                          >
+                            Deep Dive
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE VIEW */}
+            <div className="block md:hidden p-3 space-y-2.5">
               {filteredHoldings.map((item) => (
-                <tr key={item.symbol} className="hover:bg-slate-50/80 transition-colors group">
-                  <td className="py-3 px-4">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded bg-blue-50 text-blue-700 border border-blue-200 flex items-center justify-center font-mono font-bold text-xs">
-                        {item.symbol.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
-                          <span>{item.symbol}</span>
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                        </div>
-                        <div className="text-[11px] text-slate-400">
-                          {item.name} • <span className="text-slate-600 font-medium">{item.sector}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-
-                  {/* Weight Progress */}
-                  <td className="py-3 px-3">
+                <div
+                  key={item.symbol}
+                  className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs space-y-2 active:bg-slate-50 transition"
+                >
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900 tabular-nums w-10">
-                        {item.weight}%
+                      <span className="font-mono font-bold text-sm text-slate-900">{item.symbol}</span>
+                      <span className="bg-slate-100 text-slate-600 text-[9px] font-mono font-medium px-1.5 py-0.5 rounded">
+                        {item.weight}% Alloc
                       </span>
-                      <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-600 rounded-full" style={{ width: `${item.weight * 5}%` }}></div>
-                      </div>
                     </div>
-                  </td>
-
-                  <td className="py-3 px-3 text-right font-mono font-medium text-slate-800 tabular-nums">
-                    {item.qty}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono text-slate-500 tabular-nums">
-                    ₹{item.avgBuy.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono font-semibold text-slate-900 tabular-nums">
-                    ₹{item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono font-bold text-slate-900 tabular-nums">
-                    ₹{item.totalValue.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </td>
-
-                  {/* Unrealized P&L */}
-                  <td className="py-3 px-3 text-right font-mono tabular-nums">
-                    <div className="text-emerald-600 font-bold">
-                      +₹{item.unrealizedPnL.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    <div className="text-right">
+                      <span className="font-mono font-bold text-xs text-slate-900">
+                        ₹{item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="font-mono text-[10px] text-emerald-600 font-semibold ml-1">
+                        +{item.unrealizedPnLPct}%
+                      </span>
                     </div>
-                    <div className="text-[10px] text-emerald-600 font-semibold">
-                      (+{item.unrealizedPnLPct}%)
-                    </div>
-                  </td>
+                  </div>
 
-                  {/* VaR Contrib */}
-                  <td className="py-3 px-3 text-center">
-                    <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                      {item.varContrib}
+                  <div className="flex items-center justify-between text-[11px] font-mono text-slate-500">
+                    <span>{item.qty} Qty @ Avg ₹{item.avgBuy}</span>
+                    <span className="text-emerald-600 font-bold">
+                      +₹{item.unrealizedPnL.toLocaleString("en-IN")}
                     </span>
-                  </td>
+                  </div>
 
-                  {/* Piotroski Score Badge (Clickable for 9-point Forensics) */}
-                  <td className="py-3 px-3 text-center">
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
                     <button
                       onClick={() => setSelectedForensicHolding(item)}
-                      className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                      className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono font-medium"
                     >
-                      <span>{item.piotroski}/9</span>
-                      <span className="text-[10px]">{item.piotroskiLabel}</span>
+                      Piotroski {item.piotroski}/9 {item.piotroskiLabel}
                     </button>
-                  </td>
+                    <Link
+                      href={`/analyse/${item.symbol}`}
+                      className="text-blue-600 font-semibold flex items-center gap-0.5"
+                    >
+                      Deep Dive <ChevronRight size={12} />
+                    </Link>
+                  </div>
 
-                  {/* Catalyst / Signal Tag */}
-                  <td className="py-3 px-3 text-center">
-                    <div className="flex flex-col items-center gap-0.5">
-                      <span className="text-[11px] font-medium text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
-                        {item.catalyst}
-                      </span>
-                      {item.lockWarning && (
-                        <span className="text-[9.5px] font-mono text-amber-800 bg-amber-50 border border-amber-200 px-1.5 rounded">
-                          {item.lockWarning}
-                        </span>
-                      )}
+                  {item.lockWarning && (
+                    <div className="p-1.5 rounded bg-amber-50 border border-amber-200 text-[10px] font-mono text-amber-900 flex items-center gap-1">
+                      <Lock size={12} /> {item.lockWarning}
                     </div>
-                  </td>
-
-                  {/* Actions */}
-                  <td className="py-3 px-4 text-center">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <Link
-                        href={`/analyse/${item.symbol}`}
-                        className="px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded transition"
-                      >
-                        Deep Dive
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
+                  )}
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* MOBILE VIEW: Touch-Optimized Holding Cards (390px Viewport Compliant) */}
-        <div className="block md:hidden p-3 space-y-2.5">
-          {filteredHoldings.map((item) => (
-            <div
-              key={item.symbol}
-              className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs space-y-2 active:bg-slate-50 transition"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-sm text-slate-900">{item.symbol}</span>
-                  <span className="bg-slate-100 text-slate-600 text-[9px] font-mono font-medium px-1.5 py-0.5 rounded">
-                    {item.weight}% Alloc
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="font-mono font-bold text-xs text-slate-900">
-                    ₹{item.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className="font-mono text-[10px] text-emerald-600 font-semibold ml-1">
-                    +{item.unrealizedPnLPct}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] font-mono text-slate-500">
-                <span>{item.qty} Qty @ Avg ₹{item.avgBuy}</span>
-                <span className="text-emerald-600 font-bold">
-                  +₹{item.unrealizedPnL.toLocaleString("en-IN")}
-                </span>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                <button
-                  onClick={() => setSelectedForensicHolding(item)}
-                  className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono font-medium"
-                >
-                  Piotroski {item.piotroski}/9 {item.piotroskiLabel}
-                </button>
-                <Link
-                  href={`/analyse/${item.symbol}`}
-                  className="text-blue-600 font-semibold flex items-center gap-0.5"
-                >
-                  Deep Dive <ChevronRight size={12} />
-                </Link>
-              </div>
-
-              {item.lockWarning && (
-                <div className="p-1.5 rounded bg-amber-50 border border-amber-200 text-[10px] font-mono text-amber-900 flex items-center gap-1">
-                  <Lock size={12} /> {item.lockWarning}
-                </div>
-              )}
             </div>
-          ))}
-        </div>
+          </>
+        )}
 
-        {/* Sticky Table Summary Footer */}
-        <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-          <div className="flex items-center gap-4 font-mono">
-            <span>Aggregated Holdings: <strong className="text-slate-900">6 Core Positions</strong></span>
-            <span>Unrealized Gain: <strong className="text-emerald-600 font-bold">+₹4,24,666.00</strong></span>
-            <span>Avg Portfolio Piotroski: <strong className="text-slate-900 font-bold">8.17 / 9</strong></span>
+        {/* ============================================================ */}
+        {/* TAB 2: NSE 500 TOP ALPHA PICKS (DECILE 10)                   */}
+        {/* ============================================================ */}
+        {activeTableTab === "alpha" && (
+          <>
+            {/* DESKTOP VIEW */}
+            <div className="hidden md:block overflow-x-auto w-full min-w-0">
+              <table className="w-full min-w-[960px] text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
+                    <th className="py-2.5 px-4 font-mono">TICKER & ASSET</th>
+                    <th className="py-2.5 px-3 font-mono text-center">FACTOR DECILE</th>
+                    <th className="py-2.5 px-3 font-mono text-center">MOMENTUM (12M-1M)</th>
+                    <th className="py-2.5 px-3 font-mono text-center">PIOTROSKI</th>
+                    <th className="py-2.5 px-3 font-mono text-right">P/E & ROCE %</th>
+                    <th className="py-2.5 px-3 font-mono text-center">EXPECTED ALPHA</th>
+                    <th className="py-2.5 px-3 font-mono">CATALYST / THESIS</th>
+                    <th className="py-2.5 px-4 font-mono text-center">QUICK ACTION</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans">
+                  {filteredAlphaPicks.map((pick) => (
+                    <tr key={pick.symbol} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"}`}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-7 h-7 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center font-mono font-bold text-xs">
+                            {pick.symbol.slice(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 font-mono flex items-center gap-1.5">
+                              <span>{pick.symbol}</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            </div>
+                            <div className="text-[11px] text-slate-400">
+                              {pick.name} • <span className="text-slate-600 font-medium">{pick.sector}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <span className="px-2 py-0.5 rounded-full text-xs font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {pick.decile}
+                        </span>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center font-mono font-bold text-slate-800`}>
+                        <span className="text-blue-600">{pick.momentumScore}</span>
+                        <span className="text-[10px] text-slate-400 font-normal"> / 100</span>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <span className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {pick.piotroski}/9 Strong
+                        </span>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono tabular-nums`}>
+                        <div className="text-slate-800 font-semibold">{pick.peRatio}x P/E</div>
+                        <div className="text-[10px] text-emerald-600 font-semibold">{pick.rocePct}% ROCE</div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <span className="inline-flex items-center gap-1 font-mono text-xs font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {pick.expectedAlpha}
+                        </span>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-slate-700 text-xs`}>
+                        <div className="font-medium text-slate-800">{pick.catalyst}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Consensus: {pick.sentiment}</div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"} text-center`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => alert(`Added ${pick.symbol} (+4.62% Alpha pick) to rebalancing staging basket!`)}
+                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded transition shadow-xs"
+                          >
+                            Add to Basket
+                          </button>
+                          <Link
+                            href={`/analyse/${pick.symbol}`}
+                            className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded transition"
+                          >
+                            Deep Dive
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE VIEW */}
+            <div className="block md:hidden p-3 space-y-2.5">
+              {filteredAlphaPicks.map((pick) => (
+                <div key={pick.symbol} className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-slate-900">{pick.symbol}</span>
+                      <span className="bg-emerald-50 text-emerald-700 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border border-emerald-200">
+                        {pick.decile} ({pick.expectedAlpha})
+                      </span>
+                    </div>
+                    <span className="font-mono text-xs font-semibold text-blue-600">
+                      Mom: {pick.momentumScore}/100
+                    </span>
+                  </div>
+                  <div className="text-xs text-slate-600">{pick.catalyst}</div>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-500">{pick.peRatio}x P/E • {pick.rocePct}% ROCE</span>
+                    <Link href={`/analyse/${pick.symbol}`} className="text-blue-600 font-semibold flex items-center gap-0.5">
+                      Deep Dive <ChevronRight size={12} />
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 3: OPTION CHAIN MATRIX (ATM 24,850)                      */}
+        {/* ============================================================ */}
+        {activeTableTab === "options" && (
+          <>
+            {/* DESKTOP VIEW */}
+            <div className="hidden md:block overflow-x-auto w-full min-w-0">
+              <table className="w-full min-w-[960px] text-center text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
+                    <th colSpan={4} className="py-2 px-3 text-center bg-blue-50/40 text-blue-900 border-r border-slate-200">
+                      CALL OPTIONS (CE)
+                    </th>
+                    <th className="py-2 px-4 text-center bg-slate-100 text-slate-900 font-bold border-r border-slate-200">
+                      STRIKE
+                    </th>
+                    <th colSpan={4} className="py-2 px-3 text-center bg-emerald-50/40 text-emerald-900">
+                      PUT OPTIONS (PE)
+                    </th>
+                  </tr>
+                  <tr className="bg-slate-50/80 border-b border-slate-200 text-[10px] font-mono text-slate-500">
+                    <th className="py-1.5 px-3 text-right">CALL OI</th>
+                    <th className="py-1.5 px-2 text-right">CHG</th>
+                    <th className="py-1.5 px-2 text-right">IV %</th>
+                    <th className="py-1.5 px-3 text-right border-r border-slate-200 font-semibold text-slate-700">CALL LTP (₹)</th>
+                    <th className="py-1.5 px-4 text-center bg-slate-100 font-bold text-slate-800 border-r border-slate-200">STRIKE (NIFTY)</th>
+                    <th className="py-1.5 px-3 text-left font-semibold text-slate-700">PUT LTP (₹)</th>
+                    <th className="py-1.5 px-2 text-left">IV %</th>
+                    <th className="py-1.5 px-2 text-left">CHG</th>
+                    <th className="py-1.5 px-3 text-left">PUT OI</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-mono text-xs">
+                  {optionChain.map((row) => (
+                    <tr
+                      key={row.strike}
+                      className={`hover:bg-slate-50/80 transition-colors ${
+                        row.isAtm ? "bg-blue-50/60 font-semibold" : row.isMaxPain ? "bg-amber-50/40" : ""
+                      }`}
+                    >
+                      <td className={`${isCompactDensity ? "py-1 px-3" : "py-2.5 px-3"} text-right font-medium text-slate-800`}>
+                        {row.callOi}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-2" : "py-2.5 px-2"} text-right text-[11px] ${row.callOiChg.startsWith("+") ? "text-emerald-600 font-semibold" : "text-slate-400"}`}>
+                        {row.callOiChg}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-2" : "py-2.5 px-2"} text-right text-slate-500 text-[11px]`}>
+                        {row.callIv}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-3" : "py-2.5 px-3"} text-right font-bold text-slate-900 border-r border-slate-200 tabular-nums`}>
+                        ₹{row.callLtp.toFixed(2)}
+                      </td>
+
+                      {/* STRIKE PRICE CENTER CELL */}
+                      <td className={`${isCompactDensity ? "py-1 px-4" : "py-2.5 px-4"} text-center font-bold border-r border-slate-200 ${
+                        row.isAtm
+                          ? "bg-blue-600 text-white shadow-xs"
+                          : row.isMaxPain
+                          ? "bg-amber-100 text-amber-900"
+                          : row.isCallWall
+                          ? "bg-red-50 text-red-700"
+                          : row.isPutWall
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-900"
+                      }`}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <span>{row.strike}</span>
+                          {row.isAtm && <span className="text-[9px] uppercase px-1 py-0.2 bg-white text-blue-700 rounded font-sans font-bold">ATM</span>}
+                          {row.isMaxPain && <span className="text-[9px] uppercase px-1 py-0.2 bg-amber-200 text-amber-900 rounded font-sans font-bold">Pain</span>}
+                          {row.isCallWall && <span className="text-[9px] uppercase px-1 py-0.2 bg-red-100 text-red-800 rounded font-sans font-bold">Wall</span>}
+                          {row.isPutWall && <span className="text-[9px] uppercase px-1 py-0.2 bg-emerald-100 text-emerald-800 rounded font-sans font-bold">Support</span>}
+                        </div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1 px-3" : "py-2.5 px-3"} text-left font-bold text-slate-900 tabular-nums`}>
+                        ₹{row.putLtp.toFixed(2)}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-2" : "py-2.5 px-2"} text-left text-slate-500 text-[11px]`}>
+                        {row.putIv}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-2" : "py-2.5 px-2"} text-left text-[11px] ${row.putOiChg.startsWith("+") ? "text-emerald-600 font-semibold" : "text-slate-400"}`}>
+                        {row.putOiChg}
+                      </td>
+                      <td className={`${isCompactDensity ? "py-1 px-3" : "py-2.5 px-3"} text-left font-medium text-slate-800`}>
+                        {row.putOi}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE VIEW */}
+            <div className="block md:hidden p-3 space-y-2 font-mono">
+              {optionChain.map((row) => (
+                <div
+                  key={row.strike}
+                  className={`p-2.5 rounded-lg border text-xs space-y-1.5 ${
+                    row.isAtm
+                      ? "bg-blue-50 border-blue-300"
+                      : row.isMaxPain
+                      ? "bg-amber-50 border-amber-300"
+                      : "bg-white border-slate-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between font-bold text-slate-900">
+                    <span className="flex items-center gap-1.5">
+                      Strike {row.strike}
+                      {row.isAtm && <span className="px-1.5 py-0.2 bg-blue-600 text-white text-[9px] rounded">ATM</span>}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-sans">{row.tag || "NIFTY 26-SEP"}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <div className="bg-white/80 p-1.5 rounded border border-slate-200">
+                      <div className="text-[9px] text-slate-400 uppercase">CALL LTP</div>
+                      <div className="font-bold text-slate-900">₹{row.callLtp} ({row.callOi})</div>
+                    </div>
+                    <div className="bg-white/80 p-1.5 rounded border border-slate-200 text-right">
+                      <div className="text-[9px] text-slate-400 uppercase">PUT LTP</div>
+                      <div className="font-bold text-slate-900">₹{row.putLtp} ({row.putOi})</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================ */}
+        {/* TAB 4: STRATEGY BACKTEST LOGS                                */}
+        {/* ============================================================ */}
+        {activeTableTab === "backtest" && (
+          <>
+            {/* DESKTOP VIEW */}
+            <div className="hidden md:block overflow-x-auto w-full min-w-0">
+              <table className="w-full min-w-[960px] text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
+                    <th className="py-2.5 px-4 font-mono">STRATEGY MODEL</th>
+                    <th className="py-2.5 px-3 font-mono">BENCHMARK</th>
+                    <th className="py-2.5 px-3 font-mono text-center">IS SHARPE</th>
+                    <th className="py-2.5 px-3 font-mono text-center">OOS SHARPE</th>
+                    <th className="py-2.5 px-3 font-mono text-center">IS/OOS RATIO</th>
+                    <th className="py-2.5 px-3 font-mono text-center">MAX DRAWDOWN</th>
+                    <th className="py-2.5 px-3 font-mono text-center">WIN RATE</th>
+                    <th className="py-2.5 px-3 font-mono text-right">CAGR %</th>
+                    <th className="py-2.5 px-4 font-mono text-center">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-sans">
+                  {backtestLogs.map((log) => (
+                    <tr key={log.strategy} className="hover:bg-slate-50/80 transition-colors group">
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"}`}>
+                        <div className="font-bold text-slate-900">{log.strategy}</div>
+                        <div className="text-[11px] text-slate-400 font-mono">Walk-forward folds: 5 Folds • {log.rebalanceFreq}</div>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} font-mono text-slate-600 text-[11px]`}>
+                        {log.benchmark}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center font-mono font-bold text-slate-800`}>
+                        {log.isSharpe}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center font-mono font-bold text-blue-600`}>
+                        {log.oosSharpe}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
+                        <span className="px-2 py-0.5 rounded font-mono text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {log.sampleRatio}
+                        </span>
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center font-mono font-bold text-red-600`}>
+                        {log.maxDrawdown}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center font-mono font-semibold text-slate-800`}>
+                        {log.winRate}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-right font-mono font-bold text-emerald-600 text-sm`}>
+                        {log.annualizedReturn}
+                      </td>
+
+                      <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"} text-center`}>
+                        <span className={`px-2.5 py-1 rounded text-[11px] font-mono font-semibold border ${
+                          log.status === "Active Production"
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : log.status === "Active Hedge"
+                            ? "bg-blue-50 text-blue-700 border-blue-200"
+                            : "bg-amber-50 text-amber-700 border-amber-200"
+                        }`}>
+                          {log.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* MOBILE VIEW */}
+            <div className="block md:hidden p-3 space-y-2.5">
+              {backtestLogs.map((log) => (
+                <div key={log.strategy} className="bg-white border border-slate-200 rounded-lg p-3 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-slate-900">{log.strategy}</span>
+                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {log.annualizedReturn}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 font-mono text-[10px] text-center">
+                    <div className="p-1.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="text-slate-400">OOS SHARPE</div>
+                      <div className="font-bold text-blue-600 text-xs">{log.oosSharpe}</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="text-slate-400">MAX DD</div>
+                      <div className="font-bold text-red-600 text-xs">{log.maxDrawdown}</div>
+                    </div>
+                    <div className="p-1.5 rounded bg-slate-50 border border-slate-200">
+                      <div className="text-slate-400">WIN RATE</div>
+                      <div className="font-bold text-slate-800 text-xs">{log.winRate}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
+        {/* ============================================================ */}
+        {/* STICKY TABLE SUMMARY & PAGINATION FOOTER (Master Spec)        */}
+        {/* ============================================================ */}
+        <div className="px-5 py-3 border-t border-slate-200 bg-slate-50/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex flex-wrap items-center gap-4 text-slate-600">
+            {activeTableTab === "holdings" && (
+              <>
+                <div>
+                  <span>Valuation In View: </span>
+                  <strong className="text-slate-900 font-bold tabular-nums">₹32,05,920.00</strong>
+                  <span className="text-[10px] text-slate-400 ml-1">(66.4% NAV)</span>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Agg. Unrealized Gain: </span>
+                  <strong className="text-emerald-600 font-bold tabular-nums">+₹2,71,520.00 (+9.25%)</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Health Index: </span>
+                  <strong className="text-blue-600 font-bold">8.2 / 9 Avg F-Score</strong>
+                </div>
+              </>
+            )}
+
+            {activeTableTab === "alpha" && (
+              <>
+                <div>
+                  <span>Avg Alpha Spread: </span>
+                  <strong className="text-emerald-600 font-bold tabular-nums">+4.04% over Nifty 500</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Coverage: </span>
+                  <strong className="text-blue-600 font-bold">100% Top Decile (D10)</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Universe: </span>
+                  <strong className="text-slate-900 font-bold">500 NSE Equities Evaluated</strong>
+                </div>
+              </>
+            )}
+
+            {activeTableTab === "options" && (
+              <>
+                <div>
+                  <span>NIFTY Spot Index: </span>
+                  <strong className="text-slate-900 font-bold tabular-nums">24,852.15</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Put-Call Ratio (PCR): </span>
+                  <strong className="text-blue-600 font-bold tabular-nums">1.18 (Bullish Bias)</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Max Pain Strike: </span>
+                  <strong className="text-amber-700 font-bold">24,800</strong>
+                </div>
+              </>
+            )}
+
+            {activeTableTab === "backtest" && (
+              <>
+                <div>
+                  <span>Walk-Forward Models: </span>
+                  <strong className="text-slate-900 font-bold">4 Institutional Strategies</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Avg OOS Sharpe: </span>
+                  <strong className="text-blue-600 font-bold tabular-nums">1.68</strong>
+                </div>
+                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
+                <div>
+                  <span>Avg Stability Ratio: </span>
+                  <strong className="text-emerald-600 font-bold">0.86 (High Robustness)</strong>
+                </div>
+              </>
+            )}
           </div>
 
+          {/* Pagination Controls */}
           <div className="flex items-center gap-2">
-            <Link
-              href="/screener"
-              className="text-blue-600 font-semibold hover:underline flex items-center gap-1"
-            >
-              Scan All 500 NSE Equities <ArrowUpRight size={13} />
-            </Link>
+            <span className="text-[11px] text-slate-500 font-mono">
+              {activeTableTab === "holdings" && "Showing 1 - 6 of 18 Holdings"}
+              {activeTableTab === "alpha" && "Showing 1 - 6 of 50 Alpha Picks"}
+              {activeTableTab === "options" && "Showing 8 Active ATM Strikes"}
+              {activeTableTab === "backtest" && "Showing 4 Backtest Models"}
+            </span>
+            <div className="inline-flex items-center rounded border border-slate-300 bg-white shadow-2xs">
+              <button
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 transition"
+              >
+                <ChevronLeft size={15} />
+              </button>
+              <button
+                onClick={() => setCurrentPage(1)}
+                className={`px-2 py-0.5 text-[11px] font-bold border-x border-slate-200 transition ${
+                  currentPage === 1 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                1
+              </button>
+              <button
+                onClick={() => setCurrentPage(2)}
+                className={`px-2 py-0.5 text-[11px] font-bold border-r border-slate-200 transition ${
+                  currentPage === 2 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                2
+              </button>
+              <button
+                onClick={() => setCurrentPage(3)}
+                className={`px-2 py-0.5 text-[11px] font-bold border-r border-slate-200 transition ${
+                  currentPage === 3 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                3
+              </button>
+              <button
+                onClick={() => setCurrentPage((p) => Math.min(3, p + 1))}
+                disabled={currentPage === 3}
+                className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition"
+              >
+                <ChevronRight size={15} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1161,6 +1980,23 @@ export default function ConsolidatedMasterWorkstation() {
           </div>
         </div>
       )}
+
+      {/* 7. SYSTEM TELEMETRY BOTTOM STATUS BAR (Master Console Spec) */}
+      <footer className="mt-8 pt-4 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] font-mono text-slate-500">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            NSE Equity Feed: <strong className="text-emerald-700 font-semibold">Synchronized</strong>
+          </span>
+          <span>•</span>
+          <span>F&amp;O Tick Stream: <strong className="text-emerald-700 font-semibold">3.8ms Latency</strong></span>
+          <span>•</span>
+          <span>SEBI Compliance Rulebook: <strong className="text-slate-800 font-medium">Budget 2024-25 STT/LTCG</strong></span>
+        </div>
+        <div className="text-slate-500 text-center md:text-right">
+          <span>StockPortfolio.in Enterprise OS v4.2.8 • Ant Design Pro / FactSet Architecture</span>
+        </div>
+      </footer>
 
     </div>
   );
