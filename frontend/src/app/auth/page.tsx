@@ -1,25 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   Shield,
   Key,
   CheckCircle2,
   AlertCircle,
-  ExternalLink,
   LogOut,
-  RefreshCw,
   Zap,
   Lock,
+  Mail,
+  User as UserIcon,
   ArrowRight,
   FileSpreadsheet,
   Upload,
   Database,
   TrendingUp,
   Sparkles,
+  LogIn,
+  UserPlus,
+  RefreshCw,
 } from "lucide-react";
+import {
+  signin,
+  signup,
+  logout,
+  getAuthToken,
+  getAuthUser,
+  isAuthenticated,
+  type User,
+} from "@/lib/auth";
 import {
   getToken,
   setToken,
@@ -33,34 +45,61 @@ import {
   importOfflineStatement,
   uploadStatementFile,
   formatCurrency,
-  formatPct,
   type FyersStatus,
   type OfflineStatementFile,
   type OfflineImportResult,
 } from "@/lib/portfolioApi";
 
-export default function AuthPage() {
+function AuthContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTarget = searchParams.get("redirect") || "/";
+
+  // Auth Mode: "signin" | "signup"
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [authUser, setAuthUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Form Inputs
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+
+  // Fyers broker token input & state
   const [tokenInput, setTokenInput] = useState("");
   const [status, setStatus] = useState<FyersStatus | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
+  const [loadingBroker, setLoadingBroker] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
 
   // Offline statement importer states
   const [offlineFiles, setOfflineFiles] = useState<OfflineStatementFile[]>([]);
   const [importingOffline, setImportingOffline] = useState(false);
   const [activeImport, setActiveImport] = useState<OfflineImportResult | null>(null);
-  const [currentHoldingsCount, setCurrentHoldingsCount] = useState<{ equity: number; funds: number }>({
+  const [currentHoldingsCount, setCurrentHoldingsCount] = useState<{
+    equity: number;
+    funds: number;
+  }>({
     equity: 0,
     funds: 0,
   });
 
   useEffect(() => {
+    // Check existing auth state
+    const user = getAuthUser();
+    const authed = isAuthenticated();
+    if (authed && user) {
+      setAuthUser(user);
+    }
+
+    // Broker checks
     captureTokenFromUrl();
-    const current = getToken();
-    if (current) {
-      setTokenInput(current);
-      checkStatus();
+    const currentBrokerToken = getToken();
+    if (currentBrokerToken) {
+      setTokenInput(currentBrokerToken);
+      checkBrokerStatus();
     }
     fetchOfflineFiles();
     updateHoldingsCount();
@@ -69,8 +108,8 @@ export default function AuthPage() {
   const updateHoldingsCount = () => {
     const p = loadPortfolio();
     setCurrentHoldingsCount({
-      equity: p.equity.length,
-      funds: p.funds.length,
+      equity: p.equity?.length || 0,
+      funds: p.funds?.length || 0,
     });
   };
 
@@ -85,24 +124,135 @@ export default function AuthPage() {
     }
   };
 
-  const checkStatus = async () => {
-    setLoading(true);
+  const checkBrokerStatus = async () => {
+    setLoadingBroker(true);
     try {
       const res = await getFyersStatus();
       setStatus(res);
-      if (res.connected) {
-        setMessage({
-          type: "success",
-          text: `Authenticated with Fyers as ${res.name || res.fy_id || "Broker Client"}.`,
-        });
-      }
     } catch {
       setStatus({ connected: false, reason: "No active broker session detected" });
     } finally {
-      setLoading(false);
+      setLoadingBroker(false);
     }
   };
 
+  // ----------------------------------------------------
+  // Primary Account Auth Handlers (Sign In / Sign Up / Logout)
+  // ----------------------------------------------------
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setMessage({ type: "error", text: "Please provide both email and password." });
+      return;
+    }
+    setAuthLoading(true);
+    setMessage(null);
+    try {
+      const resp = await signin(email.trim(), password);
+      setAuthUser(resp.user);
+      setMessage({
+        type: "success",
+        text: `Welcome back, ${resp.user.display_name || resp.user.email}! Redirecting...`,
+      });
+      setTimeout(() => {
+        router.push(redirectTarget);
+      }, 700);
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.message || "Failed to sign in. Please check your credentials.",
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setMessage({ type: "error", text: "Please provide both email and password." });
+      return;
+    }
+    if (password.length < 6) {
+      setMessage({ type: "error", text: "Password must be at least 6 characters long." });
+      return;
+    }
+    setAuthLoading(true);
+    setMessage(null);
+    try {
+      const resp = await signup(email.trim(), password, displayName.trim() || undefined);
+      setAuthUser(resp.user);
+      setMessage({
+        type: "success",
+        text: `Account created successfully! Welcome to StockPortfolio.in, ${
+          resp.user.display_name || resp.user.email
+        }.`,
+      });
+      setTimeout(() => {
+        router.push(redirectTarget);
+      }, 800);
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err.message || "Account registration failed. Please try again.",
+      });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    setAuthLoading(true);
+    try {
+      await logout();
+      setAuthUser(null);
+      setMessage({ type: "info", text: "You have been logged out of your account." });
+    } catch (err: any) {
+      setMessage({ type: "error", text: `Logout error: ${err.message || err}` });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // Demo user quick login
+  const handleQuickDemoAuth = async () => {
+    setAuthLoading(true);
+    setMessage(null);
+    try {
+      // First try signing in with demo account
+      try {
+        const resp = await signin("trader@stockportfolio.in", "demopassword123");
+        setAuthUser(resp.user);
+        setMessage({
+          type: "success",
+          text: "Demo session loaded successfully! Redirecting...",
+        });
+        setTimeout(() => router.push(redirectTarget), 600);
+        return;
+      } catch {
+        // If not created yet, create it
+        const resp = await signup(
+          "trader@stockportfolio.in",
+          "demopassword123",
+          "Institutional Demo Desk"
+        );
+        setAuthUser(resp.user);
+        setMessage({
+          type: "success",
+          text: "Created demo account & logged in! Redirecting...",
+        });
+        setTimeout(() => router.push(redirectTarget), 600);
+      }
+    } catch (err: any) {
+      setMessage({ type: "error", text: `Demo auth failed: ${err.message || err}` });
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  // ----------------------------------------------------
+  // Broker & Offline Statement Handlers
+  // ----------------------------------------------------
   const handleManualTokenSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = tokenInput.trim();
@@ -111,24 +261,8 @@ export default function AuthPage() {
       return;
     }
     setToken(clean);
-    setMessage({ type: "success", text: "Access token saved to secure session storage." });
-    checkStatus();
-  };
-
-  const handleActivateDemoMode = () => {
-    const demoToken = "FYERS-DEMO-TOKEN";
-    setToken(demoToken);
-    setTokenInput(demoToken);
-    setStatus({
-      connected: true,
-      name: "Demo Account",
-      fy_id: "DEMO-CLIENT",
-      email: "demo@stockportfolio.in",
-    });
-    setMessage({
-      type: "info",
-      text: "Activated demo broker session.",
-    });
+    setMessage({ type: "success", text: "Broker access token saved." });
+    checkBrokerStatus();
   };
 
   const handleImportOfflineFile = async (filename?: string) => {
@@ -139,10 +273,14 @@ export default function AuthPage() {
         savePortfolio(result.portfolio);
         setActiveImport(result);
         updateHoldingsCount();
-        const cid = result.statement?.metadata?.client_id || result.report?.client_id || "STATEMENT";
+        const cid =
+          result.statement?.metadata?.client_id || result.report?.client_id || "STATEMENT";
         if (typeof window !== "undefined") {
           localStorage.setItem("stockportfolio_client_id", cid);
-          localStorage.setItem("stockportfolio_user_name", result.statement?.metadata?.client_id ? `Client ${cid}` : "Statement Account");
+          localStorage.setItem(
+            "stockportfolio_user_name",
+            result.statement?.metadata?.client_id ? `Client ${cid}` : "Statement Account"
+          );
           window.dispatchEvent(new Event("portfolio-updated"));
         }
         setStatus({
@@ -153,7 +291,11 @@ export default function AuthPage() {
         });
         setMessage({
           type: "success",
-          text: `Successfully imported statement! Loaded ${result.report.equities_imported} equities and ${result.report.funds_imported} mutual funds (Total NAV: ${formatCurrency(result.valuation?.totals?.current_value ?? 0)}).`,
+          text: `Successfully imported statement! Loaded ${result.report.equities_imported} equities and ${
+            result.report.funds_imported
+          } mutual funds (Total NAV: ${formatCurrency(
+            result.valuation?.totals?.current_value ?? 0
+          )}).`,
         });
       }
     } catch (err: any) {
@@ -179,7 +321,10 @@ export default function AuthPage() {
         const cid = result.statement?.metadata?.client_id || "UPLOADED";
         if (typeof window !== "undefined") {
           localStorage.setItem("stockportfolio_client_id", cid);
-          localStorage.setItem("stockportfolio_user_name", result.statement?.metadata?.client_id ? `Client ${cid}` : "Uploaded Statement");
+          localStorage.setItem(
+            "stockportfolio_user_name",
+            result.statement?.metadata?.client_id ? `Client ${cid}` : "Uploaded Statement"
+          );
           window.dispatchEvent(new Event("portfolio-updated"));
         }
         setStatus({
@@ -204,7 +349,7 @@ export default function AuthPage() {
     }
   };
 
-  const handleDisconnect = () => {
+  const handleDisconnectBroker = () => {
     clearToken();
     setTokenInput("");
     setStatus({ connected: false });
@@ -213,324 +358,507 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="app-container animate-fade-in" style={{ maxWidth: 860, margin: "0 auto", paddingBottom: 60 }}>
-      <div className="mb-8">
+    <div
+      className="app-container animate-fade-in"
+      style={{ maxWidth: 880, margin: "0 auto", padding: "28px 20px 60px" }}
+    >
+      {/* Header */}
+      <div className="mb-6">
         <div className="flex items-center gap-2 mb-2">
-          <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-blue-50 text-blue-700 border border-blue-200 rounded uppercase">
-            Broker Gateway
+          <span className="px-2.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 rounded uppercase">
+            Security & Identity Gate
           </span>
-          <span className="text-xs text-slate-400 font-mono">OAuth 2.0 / Broker API</span>
+          <span className="text-xs text-slate-400 font-mono">
+            Encrypted Session · PBKDF2 Hashing
+          </span>
         </div>
-        <h1 style={{ margin: 0, fontSize: "2rem", fontWeight: 800 }}>Authentication & Broker Portal</h1>
-        <p style={{ color: "var(--text-secondary)", margin: "6px 0 0" }}>
-          Connect your Fyers Securities broker account for live delivery holdings, tick-by-tick option chains, and real-time execution telemetry.
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          Authentication & Access Portal
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">
+          Sign in or create your institutional account to access quant engines, live portfolio radar,
+          and factor backtesting.
         </p>
       </div>
 
+      {/* Global Status Message */}
       {message && (
         <div
-          className="glass-panel"
+          className="glass-panel mb-6 p-4 rounded-xl border flex items-center gap-3 transition-all"
           style={{
-            marginBottom: 24,
             borderColor:
               message.type === "success"
-                ? "var(--color-buy)"
+                ? "var(--color-buy, #10b981)"
                 : message.type === "error"
-                ? "var(--color-sell)"
-                : "var(--accent-cyan)",
-            padding: "16px 20px",
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
+                ? "var(--color-sell, #ef4444)"
+                : "#3b82f6",
+            backgroundColor:
+              message.type === "success"
+                ? "rgba(16, 185, 129, 0.05)"
+                : message.type === "error"
+                ? "rgba(239, 68, 68, 0.05)"
+                : "rgba(59, 130, 246, 0.05)",
           }}
         >
           {message.type === "success" ? (
             <CheckCircle2 size={18} className="text-emerald-500 shrink-0" />
+          ) : message.type === "error" ? (
+            <AlertCircle size={18} className="text-rose-500 shrink-0" />
           ) : (
             <AlertCircle size={18} className="text-blue-500 shrink-0" />
           )}
-          <span style={{ fontSize: "0.9rem", color: "var(--text-primary)" }}>{message.text}</span>
+          <span className="text-sm font-medium text-slate-800">{message.text}</span>
         </div>
       )}
 
-      {/* Active Session Card */}
-      <div className="glass-panel mb-6" style={{ padding: "24px" }}>
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
-          <div>
-            <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Broker Connection Status</h3>
-            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-              Direct encrypted connection to NSE/BSE clearing member
-            </p>
+      {/* ==================================================== */}
+      {/* 1. PRIMARY USER ACCOUNT CARD (SIGN IN / SIGN UP / LOGOUT) */}
+      {/* ==================================================== */}
+      {authUser ? (
+        // Authenticated State View
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-slate-900 text-white font-bold text-base flex items-center justify-center border-2 border-slate-100 shadow-xs">
+                {authUser.display_name
+                  ? authUser.display_name.slice(0, 2).toUpperCase()
+                  : authUser.email.slice(0, 2).toUpperCase()}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-slate-900 leading-none">
+                    {authUser.display_name || "Institutional User"}
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Authenticated
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 font-mono mt-1">{authUser.email}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={handleLogout}
+              disabled={authLoading}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors cursor-pointer"
+            >
+              <LogOut size={14} />
+              <span>{authLoading ? "Logging out..." : "Log Out Session"}</span>
+            </button>
           </div>
-          <div className="flex items-center gap-2">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold ${
-                status?.connected
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                  : "bg-slate-100 text-slate-600 border border-slate-200"
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-5">
+            <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+              <span className="text-[11px] text-slate-400 block font-mono">ACCOUNT ID</span>
+              <span className="text-sm font-bold text-slate-800 font-mono">
+                USR-{String(authUser.id).padStart(5, "0")}
+              </span>
+            </div>
+            <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+              <span className="text-[11px] text-slate-400 block font-mono">SESSION ROLE</span>
+              <span className="text-sm font-bold text-indigo-600 font-mono">
+                Quant Desk Trader
+              </span>
+            </div>
+            <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-100">
+              <span className="text-[11px] text-slate-400 block font-mono">HOLDINGS IN VAULT</span>
+              <span className="text-sm font-bold text-slate-800 font-mono">
+                {currentHoldingsCount.equity} Equities · {currentHoldingsCount.funds} Funds
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-xs text-slate-400 font-mono">
+              All quantitative routes and screening features are unlocked for this session.
+            </span>
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+            >
+              <span>Go to Quant Dashboard</span>
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </div>
+      ) : (
+        // Unauthenticated Tabs: Sign In / Create Account
+        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden mb-8">
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200 bg-slate-50/70 p-1">
+            <button
+              onClick={() => {
+                setMode("signin");
+                setMessage(null);
+              }}
+              className={`flex-1 py-3 px-4 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                mode === "signin"
+                  ? "bg-white text-blue-600 shadow-xs border border-slate-200/60"
+                  : "text-slate-500 hover:text-slate-900"
               }`}
             >
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  status?.connected ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
-                }`}
-              ></span>
-              {status?.connected ? "CONNECTED (ACTIVE)" : "NOT CONNECTED"}
-            </span>
+              <LogIn size={15} />
+              <span>Sign In</span>
+            </button>
+            <button
+              onClick={() => {
+                setMode("signup");
+                setMessage(null);
+              }}
+              className={`flex-1 py-3 px-4 text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                mode === "signup"
+                  ? "bg-white text-blue-600 shadow-xs border border-slate-200/60"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <UserPlus size={15} />
+              <span>Create Account</span>
+            </button>
           </div>
+
+          <div className="p-6">
+            {mode === "signin" ? (
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      type="email"
+                      required
+                      placeholder="trader@stockportfolio.in"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      type="password"
+                      required
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickDemoAuth}
+                    disabled={authLoading}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Sparkles size={13} />
+                    <span>Quick Demo Login</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <LogIn size={14} />
+                    )}
+                    <span>{authLoading ? "Authenticating..." : "Sign In to Terminal"}</span>
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Full Name / Desk Title (Optional)
+                  </label>
+                  <div className="relative">
+                    <UserIcon
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      type="text"
+                      placeholder="e.g. Abhishek Kumar"
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Email Address
+                  </label>
+                  <div className="relative">
+                    <Mail
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      type="email"
+                      required
+                      placeholder="trader@stockportfolio.in"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    Password (min 6 characters)
+                  </label>
+                  <div className="relative">
+                    <Lock
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                    />
+                    <input
+                      type="password"
+                      required
+                      minLength={6}
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={handleQuickDemoAuth}
+                    disabled={authLoading}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-medium hover:underline cursor-pointer flex items-center gap-1"
+                  >
+                    <Sparkles size={13} />
+                    <span>Quick Demo Setup</span>
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={authLoading}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    {authLoading ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <UserPlus size={14} />
+                    )}
+                    <span>{authLoading ? "Creating Account..." : "Create Free Account"}</span>
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==================================================== */}
+      {/* 2. BROKER CONNECTION & OFFLINE STATEMENTS */}
+      {/* ==================================================== */}
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-base font-bold text-slate-800">
+            Portfolio Data Feeds & Statement Ingestion
+          </h2>
+          <p className="text-xs text-slate-500">
+            Link your live Fyers broker session or load verified CAMS/Zerodha statement records.
+          </p>
+        </div>
+      </div>
+
+      {/* Fyers Broker Status & Token */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs mb-6">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <div>
+            <h3 className="text-sm font-bold text-slate-800">Broker Gateway Connection (Fyers)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Encrypted feed for live delivery holdings & option chain data.
+            </p>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold ${
+              status?.connected
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-slate-100 text-slate-600 border border-slate-200"
+            }`}
+          >
+            <span
+              className={`w-2 h-2 rounded-full ${
+                status?.connected ? "bg-emerald-500 animate-pulse" : "bg-slate-400"
+              }`}
+            />
+            {status?.connected ? "CONNECTED (ACTIVE)" : "NOT CONNECTED"}
+          </span>
         </div>
 
         {status?.connected ? (
           <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-[11px] text-slate-400 block font-mono">CLIENT NAME</span>
-                <span className="text-sm font-bold text-slate-800">{status.name || "Institutional Trader"}</span>
+                <span className="text-[10px] text-slate-400 block font-mono">ACCOUNT HOLDER</span>
+                <span className="text-xs font-bold text-slate-800 truncate block">
+                  {status.name || "Broker Account"}
+                </span>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-[11px] text-slate-400 block font-mono">FYERS CLIENT ID</span>
-                <span className="text-sm font-bold text-slate-800 font-mono">{status.fy_id || "FY-84912"}</span>
+                <span className="text-[10px] text-slate-400 block font-mono">FYERS CLIENT ID</span>
+                <span className="text-xs font-bold text-slate-800 font-mono">
+                  {status.fy_id || "FY-CONNECTED"}
+                </span>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="text-[11px] text-slate-400 block font-mono">FEED LATENCY</span>
-                <span className="text-sm font-bold text-emerald-600 font-mono">3.2 ms (Live Socket)</span>
+                <span className="text-[10px] text-slate-400 block font-mono">FEED STATUS</span>
+                <span className="text-xs font-bold text-emerald-600 font-mono">
+                  Live Socket Ready
+                </span>
               </div>
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-xs text-slate-400">
-                Daily token validity: Active for 18h 42m (Renews automatically daily)
+              <span className="text-[11px] text-slate-400 font-mono">
+                Access token saved in secure session memory.
               </span>
               <button
-                onClick={handleDisconnect}
-                className="secondary-button text-xs flex items-center gap-1 text-red-600 hover:text-red-700"
+                onClick={handleDisconnectBroker}
+                className="px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-md font-medium transition cursor-pointer"
               >
-                <LogOut size={14} /> Disconnect Session
+                Disconnect Broker
               </button>
             </div>
           </div>
         ) : (
-          <div className="py-4 text-center">
-            <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-              No active broker token found. Connect via Fyers OAuth or activate Demo Mode to unlock live option chains, portfolio sync, and quant analytics.
-            </p>
-            <div className="flex items-center justify-center gap-3 flex-wrap">
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <a
                 href={loginUrl()}
-                className="glowing-button flex items-center gap-2"
-                style={{ textDecoration: "none" }}
+                className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer text-decoration-none"
               >
-                <Lock size={16} /> Connect Fyers via OAuth <ExternalLink size={14} />
+                <Zap size={14} />
+                <span>Authorize with Fyers OAuth</span>
               </a>
-              <button
-                onClick={handleActivateDemoMode}
-                className="secondary-button flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-              >
-                <Zap size={16} /> 1-Click Institutional Demo Mode
-              </button>
             </div>
+
+            <form onSubmit={handleManualTokenSubmit} className="pt-2">
+              <label className="block text-xs font-medium text-slate-600 mb-1">
+                Or Paste Access Token Manually:
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="password"
+                  placeholder="eyJhbGciOi..."
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  className="flex-1 px-3 py-1.5 text-xs font-mono bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-blue-500"
+                />
+                <button
+                  type="submit"
+                  disabled={loadingBroker}
+                  className="px-4 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium rounded-lg transition cursor-pointer"
+                >
+                  Save
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>
 
-      {/* Offline Broker Statement & Holdings Importer */}
-      <div className="glass-panel mb-6" style={{ padding: "24px" }}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-2">
+      {/* Offline Statements Section */}
+      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Offline Broker Statement Importer</h3>
-              <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded uppercase flex items-center gap-1">
-                <FileSpreadsheet size={12} /> Excel / Zerodha (.xlsx)
-              </span>
-            </div>
-            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-              Import verified holding statements from <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">ignore_offline/</code> or upload your broker export file.
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <FileSpreadsheet size={16} className="text-emerald-600" />
+              <span>Offline Statement Ingestion</span>
+            </h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Directly parse CAS PDF/Excel, Zerodha tradebooks, or server statement archives.
             </p>
           </div>
-          <div className="text-left sm:text-right">
-            <span className="text-xs font-mono text-slate-400 block">
-              Active Cockpit Holdings
-            </span>
-            <span className="text-xs font-bold text-slate-800 font-mono">
-              {currentHoldingsCount.equity} Stocks • {currentHoldingsCount.funds} Funds
-            </span>
-          </div>
-        </div>
-
-        {/* Offline Files Found in ignore_offline */}
-        <div className="space-y-4">
-          {offlineFiles.length > 0 ? (
-            offlineFiles.map((file) => (
-              <div key={file.name} className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-sm text-slate-900 font-mono">
-                        {file.name}
-                      </span>
-                      <span className="px-1.5 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-100 text-emerald-800">
-                        Detected in ignore_offline
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 mb-0 font-mono">
-                      Size: {(file.size_bytes / 1024).toFixed(1)} KB • Modified:{" "}
-                      {file.modified_at ? new Date(file.modified_at).toLocaleDateString() : "Recent"}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleImportOfflineFile(file.name)}
-                      disabled={importingOffline}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md shadow-sm transition-all"
-                    >
-                      {importingOffline ? (
-                        <>
-                          <RefreshCw size={14} className="animate-spin" />
-                          <span>Parsing & Mapping AMFI...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles size={14} />
-                          <span>Import & Apply {file.name.replace(/\.xlsx$/i, "")}</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* If activeImport has been loaded, show diagnostics pill */}
-                {activeImport && (
-                  <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Client ID</span>
-                      <span className="font-bold text-slate-800 font-mono">
-                        {activeImport.statement?.metadata?.client_id || activeImport.report?.client_id || "Imported"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Portfolio NAV</span>
-                      <span className="font-bold text-slate-900 font-mono">
-                        {formatCurrency(activeImport.valuation?.totals?.current_value ?? 0)}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-mono uppercase">Unrealized P&L</span>
-                      <span
-                        className={`font-bold font-mono ${
-                          (activeImport.valuation?.totals?.pnl ?? 0) >= 0 ? "text-emerald-700" : "text-rose-700"
-                        }`}
-                      >
-                        {(activeImport.valuation?.totals?.pnl ?? 0) >= 0 ? "+" : ""}
-                        {formatCurrency(activeImport.valuation?.totals?.pnl ?? 0)} (
-                        {formatPct(activeImport.valuation?.totals?.pnl_pct ?? 0)})
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] font-mono uppercase">AMFI Resolution</span>
-                      <span className="font-bold text-emerald-600 font-mono">
-                        {activeImport.report?.funds_imported ?? 0} Funds Mapped
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80 text-center text-xs text-slate-500">
-              No offline statement files detected in{" "}
-              <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">ignore_offline/</code>.
-              Place an export file in that directory or upload one below.
-            </div>
-          )}
-
-          {/* Custom Upload Dropzone */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white rounded-lg border border-dashed border-slate-300 hover:border-blue-400 transition-colors gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                <Upload size={17} />
-              </div>
-              <div>
-                <span className="text-xs font-semibold text-slate-800 block">
-                  Upload Custom Holdings Statement (.xlsx)
-                </span>
-                <span className="text-[11px] text-slate-500 block">
-                  Automatic AMFI fund code resolution, ISIN reconciliation, and capital gains tracking
-                </span>
-              </div>
-            </div>
-            <div>
-              <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-md border border-slate-300 transition">
-                <span>Browse File</span>
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Manual Token Setup */}
-      <div className="glass-panel mb-6" style={{ padding: "24px" }}>
-        <h3 style={{ margin: "0 0 6px", fontSize: "1.05rem" }}>Manual Access Token Provisioning</h3>
-        <p style={{ margin: "0 0 16px", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
-          If generating tokens through headless Python scripts or daily crons, paste your raw Fyers v3 Bearer Token below:
-        </p>
-
-        <form onSubmit={handleManualTokenSubmit} className="space-y-3">
-          <div className="flex gap-2">
+          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-semibold cursor-pointer transition">
+            <Upload size={13} />
+            <span>Upload File</span>
             <input
-              type="password"
-              placeholder="Paste Fyers Bearer Access Token (eyJhbGciOi...)"
-              value={tokenInput}
-              onChange={(e) => setTokenInput(e.target.value)}
-              className="flex-1 px-3 py-2 text-xs font-mono rounded-md border border-slate-300 bg-white text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              type="file"
+              accept=".xlsx,.xls,.csv,.pdf"
+              onChange={handleFileUpload}
+              disabled={importingOffline}
+              className="hidden"
             />
-            <button type="submit" className="glowing-button text-xs px-4">
-              Save Token
-            </button>
-          </div>
-          <span className="text-[11px] text-slate-400 block">
-            Stored only in your local browser session storage; never logged or written to plain text files.
-          </span>
-        </form>
-      </div>
+          </label>
+        </div>
 
-      {/* Quick Navigation Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Link
-          href="/portfolio"
-          className="glass-panel p-4 hover:border-blue-500 transition block text-decoration-none"
-          style={{ textDecoration: "none" }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-sm text-slate-900">Portfolio & Wealth Cone</span>
-            <ArrowRight size={16} className="text-blue-600" />
+        {offlineFiles.length > 0 && (
+          <div className="space-y-2">
+            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block font-mono">
+              Available Offline Archive Files:
+            </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {offlineFiles.map((file) => (
+                <div
+                  key={file.name}
+                  className="p-3 bg-slate-50 border border-slate-100 rounded-lg flex items-center justify-between gap-3 hover:border-slate-300 transition"
+                >
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-semibold text-slate-800 truncate block">
+                      {file.name}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {(file.size_bytes / 1024).toFixed(1)} KB
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleImportOfflineFile(file.name)}
+                    disabled={importingOffline}
+                    className="px-2.5 py-1 text-xs font-semibold bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-md border border-blue-200 transition cursor-pointer"
+                  >
+                    {importingOffline ? "Parsing..." : "Import"}
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="text-xs text-slate-500 mt-1 mb-0">
-            View Value at Risk (VaR 95%), 10Y Monte Carlo wealth cone, and 0% tax rebalancing.
-          </p>
-        </Link>
-
-        <Link
-          href="/options"
-          className="glass-panel p-4 hover:border-blue-500 transition block text-decoration-none"
-          style={{ textDecoration: "none" }}
-        >
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-sm text-slate-900">Options & Derivatives</span>
-            <ArrowRight size={16} className="text-blue-600" />
-          </div>
-          <p className="text-xs text-slate-500 mt-1 mb-0">
-            Live NSE option chains, PCR, Max Pain, Open Interest buildup, and tail risk sizer.
-          </p>
-        </Link>
+        )}
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-600 font-mono text-xs">
+          Loading Security Gate...
+        </div>
+      }
+    >
+      <AuthContent />
+    </Suspense>
   );
 }

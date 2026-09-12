@@ -74,6 +74,7 @@ class Account(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[Optional[str]] = mapped_column(String(320), unique=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
     # Hash, never the token itself: a leaked database should not hand over
     # working credentials for every account in it.
     access_key_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)

@@ -30,6 +30,7 @@ from app.routes.admin import router as admin_router
 from app.routes.macro import router as macro_router
 from app.routes.market_pulse import router as market_pulse_router
 from app.routes.ml import router as ml_router
+from app.routes.auth import router as auth_router
 
 # Configure logging to output UTF-8 to stdout/stderr
 logging.basicConfig(
@@ -145,6 +146,7 @@ app.include_router(recommendations_router, prefix="/api")
 app.include_router(macro_router, prefix="/api")
 app.include_router(market_pulse_router, prefix="/api")
 app.include_router(ml_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 @app.get("/health")
 def health_check():

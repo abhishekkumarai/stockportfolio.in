@@ -65,8 +65,46 @@ def account_for_key(session: Session, key: str) -> Optional[Account]:
     return account
 
 
+def account_for_email(session: Session, email: str) -> Optional[Account]:
+    if not email:
+        return None
+    return session.scalar(
+        select(Account).where(Account.email == email.strip().lower())
+    )
+
+
+def register_user(
+    session: Session,
+    email: str,
+    password_hash: str,
+    display_name: Optional[str] = None,
+) -> tuple[Account, str]:
+    """Register a new user account with hashed password and return account + token."""
+    key = secret_store.new_access_key()
+    account = Account(
+        email=email.strip().lower(),
+        password_hash=password_hash,
+        display_name=display_name,
+        access_key_hash=secret_store.hash_access_key(key),
+        last_seen_at=utcnow(),
+    )
+    session.add(account)
+    session.flush()
+    return account, key
+
+
+def issue_new_key(session: Session, account: Account) -> str:
+    """Issue a fresh access key for an account upon successful login."""
+    key = secret_store.new_access_key()
+    account.access_key_hash = secret_store.hash_access_key(key)
+    account.last_seen_at = utcnow()
+    session.flush()
+    return key
+
+
 def all_accounts(session: Session) -> List[Account]:
     return list(session.scalars(select(Account)))
+
 
 
 # ---- holdings ------------------------------------------------------------

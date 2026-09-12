@@ -19,8 +19,11 @@ import {
   FileText,
   Menu,
   X,
+  LogIn,
+  LogOut,
 } from "lucide-react";
 import { getFyersStatus, getToken, loadPortfolio, type FyersStatus } from "@/lib/portfolioApi";
+import { getAuthUser, isAuthenticated, logout as doLogout, type User } from "@/lib/auth";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -43,18 +46,33 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
     return () => window.removeEventListener("popstate", sync);
   }, [pathname]);
 
+  const [isAuthed, setIsAuthed] = useState(false);
+
   useEffect(() => {
     const updateProfile = () => {
       try {
+        const authed = isAuthenticated();
+        setIsAuthed(authed);
+        const authUser = getAuthUser();
         const p = loadPortfolio();
         const total = (p.equity?.length || 0) + (p.funds?.length || 0);
         const cid = typeof window !== "undefined" ? localStorage.getItem("stockportfolio_client_id") : null;
         const storedName = typeof window !== "undefined" ? localStorage.getItem("stockportfolio_user_name") : null;
 
-        const displayName =
-          fyersStatus?.name ||
-          storedName ||
-          (fyersStatus?.connected ? fyersStatus.fy_id || "Broker Account" : cid ? `Account ${cid}` : "Portfolio Account");
+        let displayName = "Portfolio Account";
+        if (authUser?.display_name) {
+          displayName = authUser.display_name;
+        } else if (authUser?.email) {
+          displayName = authUser.email.split("@")[0];
+        } else if (fyersStatus?.name) {
+          displayName = fyersStatus.name;
+        } else if (storedName) {
+          displayName = storedName;
+        } else if (fyersStatus?.connected && fyersStatus.fy_id) {
+          displayName = fyersStatus.fy_id;
+        } else if (cid) {
+          displayName = `Account ${cid}`;
+        }
         setProfileName(displayName);
 
         const parts = displayName.trim().split(/\s+/);
@@ -64,7 +82,9 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
           setInitials(displayName.slice(0, 2).toUpperCase() || "PA");
         }
 
-        if (cid && total > 0) {
+        if (authUser?.email) {
+          setProfileSubtitle(total > 0 ? `${authUser.email} · ${total} Assets` : authUser.email);
+        } else if (cid && total > 0) {
           setProfileSubtitle(`${cid} • ${total} Holdings`);
         } else if (fyersStatus?.fy_id) {
           setProfileSubtitle(`${fyersStatus.fy_id}${total > 0 ? ` • ${total} Holdings` : ""}`);
@@ -73,7 +93,7 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
         } else if (fyersStatus?.connected) {
           setProfileSubtitle("Active Broker Session");
         } else {
-          setProfileSubtitle("Offline / Disconnected");
+          setProfileSubtitle("Not Authenticated");
         }
       } catch {
         // fallback
@@ -82,7 +102,11 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
 
     updateProfile();
     window.addEventListener("portfolio-updated", updateProfile);
-    return () => window.removeEventListener("portfolio-updated", updateProfile);
+    window.addEventListener("auth-changed", updateProfile);
+    return () => {
+      window.removeEventListener("portfolio-updated", updateProfile);
+      window.removeEventListener("auth-changed", updateProfile);
+    };
   }, [fyersStatus, pathname]);
 
   useEffect(() => {
@@ -398,42 +422,58 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
 
       {/* Bottom: User Profile Section */}
       <div className="p-3 border-t border-slate-200 bg-slate-50/90 shrink-0">
-        <Link
-          href="/auth"
-          onClick={() => handleNav("/auth")}
-          className="flex items-center gap-2.5 p-1.5 -m-0.5 rounded-lg hover:bg-slate-100 transition group text-decoration-none"
-          title="Manage Broker Auth & API Keys"
-        >
-          <div className="w-8 h-8 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 shrink-0 transition-all">
-            {initials}
+        {isAuthed ? (
+          <div className="flex items-center justify-between gap-1">
+            <Link
+              href="/auth"
+              onClick={() => handleNav("/auth")}
+              className="flex items-center gap-2.5 p-1.5 -m-0.5 rounded-lg hover:bg-slate-100 transition group text-decoration-none min-w-0 flex-1"
+              title="View Account Profile & Session Details"
+            >
+              <div className="w-8 h-8 rounded-full bg-slate-900 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 shrink-0 transition-all">
+                {initials}
+              </div>
+              <div className="flex flex-col text-left min-w-0 flex-1 leading-tight">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                    {profileName}
+                  </span>
+                  <span
+                    className={`w-2 h-2 rounded-full shrink-0 ${
+                      fyersStatus?.connected
+                        ? "bg-emerald-500 animate-pulse"
+                        : "bg-emerald-500"
+                    }`}
+                    title={fyersStatus?.connected ? "Broker Connected" : "Authenticated"}
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono truncate">
+                  {profileSubtitle}
+                </span>
+              </div>
+            </Link>
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await doLogout();
+              }}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer shrink-0"
+              title="Log Out Session"
+            >
+              <LogOut size={15} />
+            </button>
           </div>
-          <div className="flex flex-col text-left min-w-0 flex-1 leading-tight">
-            <div className="flex items-center justify-between gap-1">
-              <span className="text-xs font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
-                {profileName}
-              </span>
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${
-                  fyersStatus?.connected
-                    ? "bg-emerald-500 animate-pulse"
-                    : profileSubtitle.includes("Holdings")
-                    ? "bg-blue-500"
-                    : "bg-slate-300"
-                }`}
-                title={
-                  fyersStatus?.connected
-                    ? "Broker Connected"
-                    : profileSubtitle.includes("Holdings")
-                    ? "Offline Statement Active"
-                    : "Disconnected"
-                }
-              ></span>
-            </div>
-            <span className="text-[10px] text-slate-400 font-mono truncate">
-              {profileSubtitle}
-            </span>
-          </div>
-        </Link>
+        ) : (
+          <Link
+            href="/auth"
+            onClick={() => handleNav("/auth")}
+            className="flex items-center justify-center gap-2 w-full py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-xs transition-colors text-decoration-none"
+          >
+            <LogIn size={14} />
+            <span>Sign In to Terminal</span>
+          </Link>
+        )}
       </div>
     </aside>
   );

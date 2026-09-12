@@ -117,6 +117,28 @@ def constant_time_equals(left: str, right: str) -> bool:
     return stdlib_secrets.compare_digest(left, right)
 
 
+def hash_password(password: str) -> str:
+    """Hash a user password using PBKDF2-HMAC-SHA256 with 100,000 rounds and random salt."""
+    salt = stdlib_secrets.token_hex(16)
+    iterations = 100_000
+    derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+    return f"pbkdf2:sha256:{iterations}${salt}${derived.hex()}"
+
+
+def verify_password(password: str, hashed: Optional[str]) -> bool:
+    """Verify a plaintext password against a stored PBKDF2 hash."""
+    if not hashed or not hashed.startswith("pbkdf2:sha256:"):
+        return False
+    try:
+        header, salt, digest = hashed.split("$")
+        iterations = int(header.split(":")[2])
+        derived = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), iterations)
+        return constant_time_equals(digest, derived.hex())
+    except Exception:
+        return False
+
+
 def admin_token() -> Optional[str]:
     """Shared secret guarding the job-trigger endpoints, if configured."""
     return (os.getenv("ADMIN_TOKEN") or "").strip() or None
+

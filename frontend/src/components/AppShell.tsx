@@ -1,12 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
+import { isAuthenticated } from "@/lib/auth";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authed, setAuthed] = useState(false);
+
+  // Synchronize client-side auth state
+  useEffect(() => {
+    const checkAuth = () => {
+      const auth = isAuthenticated();
+      setAuthed(auth);
+      setAuthChecked(true);
+
+      if (!auth && pathname !== "/auth") {
+        const dest = pathname !== "/" ? `/auth?redirect=${encodeURIComponent(pathname)}` : "/auth";
+        router.replace(dest);
+      }
+    };
+
+    checkAuth();
+
+    const handleAuthChange = () => checkAuth();
+    window.addEventListener("auth-changed", handleAuthChange);
+    window.addEventListener("storage", handleAuthChange);
+
+    return () => {
+      window.removeEventListener("auth-changed", handleAuthChange);
+      window.removeEventListener("storage", handleAuthChange);
+    };
+  }, [pathname, router]);
 
   // Close mobile drawer on Escape key
   useEffect(() => {
@@ -26,6 +57,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       setDesktopSidebarOpen((prev) => !prev);
     }
   };
+
+  // Prevent flash of protected content while evaluating authentication
+  if (!authChecked && pathname !== "/auth") {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100 font-mono">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+          <span className="text-xs uppercase tracking-widest text-slate-400">
+            Verifying Session Credentials...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // If unauthenticated and not on /auth yet, show spinner while redirect takes effect
+  if (!authed && pathname !== "/auth") {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-slate-100 font-mono">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />
+          <span className="text-xs uppercase tracking-widest text-slate-400">
+            Redirecting to Authentication...
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full max-w-full min-h-screen overflow-x-hidden">
