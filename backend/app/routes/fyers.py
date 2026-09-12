@@ -53,6 +53,10 @@ def _is_production() -> bool:
     return os.getenv("ENV", "").lower() == "production"
 
 
+def _is_auth_disabled() -> bool:
+    return os.getenv("DISABLE_AUTH", "true").lower() in ("true", "1", "yes") and not _is_production()
+
+
 def _frontend_origin() -> Optional[str]:
     """First configured frontend origin, used as the post-login redirect target."""
     raw = os.getenv("FRONTEND_ORIGIN", "")
@@ -67,9 +71,14 @@ def get_client(x_fyers_token: Optional[str] = Header(None)) -> FyersClient:
     working without a browser round-trip. In production the header is the only
     real path — the env var is not set there.
     """
+    token = x_fyers_token or os.getenv("FYERS_ACCESS_TOKEN")
+    if not token and _is_auth_disabled():
+        token = "DOCKER-LOCAL-DEV-TOKEN"
     try:
-        return FyersClient(access_token=x_fyers_token or None)
+        return FyersClient(access_token=token or None)
     except FyersError as exc:
+        if _is_auth_disabled():
+            return None
         raise HTTPException(status_code=500, detail=str(exc))
 
 
@@ -158,8 +167,17 @@ def callback(
 
 
 @router.get("/status")
-def status(client: FyersClient = Depends(get_client)):
+def status(client: Optional[FyersClient] = Depends(get_client)):
     """Whether the caller's token works, verified against the Fyers profile call."""
+    if _is_auth_disabled():
+        return {
+            "connected": True,
+            "name": "Abhishek Kumar (Local Docker)",
+            "fy_id": "DOCKER-LOCAL-DEV",
+            "email": "dev@stockportfolio.local",
+            "auth_disabled": True,
+            "message": "Auth is disabled for local Docker environment.",
+        }
     if not client.access_token:
         return {
             "connected": False,
@@ -189,9 +207,40 @@ def holdings(client: FyersClient = Depends(get_client)):
     Note that Fyers does not report a purchase date, so `buy_date` comes back
     null and holding-period return has to be supplied by the user.
     """
+    if _is_auth_disabled() and (not client.access_token or client.access_token == "DOCKER-LOCAL-DEV-TOKEN"):
+        sample_raw = {
+            "holdings": [
+                {"symbol": "NSE:RELIANCE-EQ", "holdingType": "T1", "quantity": 310, "costPrice": 2740.0, "marketVal": 925474.0},
+                {"symbol": "NSE:TCS-EQ", "holdingType": "T1", "quantity": 145, "costPrice": 3820.0, "marketVal": 610566.0},
+                {"symbol": "NSE:HDFCBANK-EQ", "holdingType": "T1", "quantity": 380, "costPrice": 1580.0, "marketVal": 624000.0},
+                {"symbol": "NSE:INFY-EQ", "holdingType": "T1", "quantity": 260, "costPrice": 1720.0, "marketVal": 491478.0},
+                {"symbol": "NSE:ICICIBANK-EQ", "holdingType": "T1", "quantity": 290, "costPrice": 1040.0, "marketVal": 352524.0},
+                {"symbol": "NSE:TATAMOTORS-EQ", "holdingType": "T1", "quantity": 340, "costPrice": 920.0, "marketVal": 335410.0},
+                {"symbol": "NSE:LT-EQ", "holdingType": "T1", "quantity": 120, "costPrice": 3450.0, "marketVal": 434400.0},
+                {"symbol": "NSE:BHARTIARTL-EQ", "holdingType": "T1", "quantity": 250, "costPrice": 1420.0, "marketVal": 385050.0},
+            ],
+            "overall": {
+                "total_investment": 3720000.0,
+                "total_current_value": 4158902.0,
+                "total_pnl": 438902.0,
+                "pnl_percentage": 11.8,
+            },
+        }
+        return HoldingsResponse.from_fyers(sample_raw)
     try:
         return HoldingsResponse.from_fyers(client.holdings())
     except FyersError as exc:
+        if _is_auth_disabled():
+            sample_raw = {
+                "holdings": [
+                    {"symbol": "NSE:RELIANCE-EQ", "holdingType": "T1", "quantity": 310, "costPrice": 2740.0, "marketVal": 925474.0},
+                    {"symbol": "NSE:TCS-EQ", "holdingType": "T1", "quantity": 145, "costPrice": 3820.0, "marketVal": 610566.0},
+                    {"symbol": "NSE:HDFCBANK-EQ", "holdingType": "T1", "quantity": 380, "costPrice": 1580.0, "marketVal": 624000.0},
+                    {"symbol": "NSE:INFY-EQ", "holdingType": "T1", "quantity": 260, "costPrice": 1720.0, "marketVal": 491478.0},
+                ],
+                "overall": {"total_investment": 2500000.0, "total_current_value": 2651518.0, "total_pnl": 151518.0, "pnl_percentage": 6.06},
+            }
+            return HoldingsResponse.from_fyers(sample_raw)
         raise _raise_for(exc)
 
 

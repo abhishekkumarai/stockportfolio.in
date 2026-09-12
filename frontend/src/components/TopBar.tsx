@@ -229,7 +229,11 @@ export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps =
         <div className="h-5 w-[1px] bg-slate-200 hidden sm:block"></div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-2.5 pl-1 cursor-pointer group">
+        <Link
+          href="/auth"
+          className="flex items-center gap-2.5 pl-1 cursor-pointer group text-decoration-none"
+          title="Manage Broker Auth & API Keys"
+        >
           <div className="w-7 h-7 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 transition-all">
             AK
           </div>
@@ -239,7 +243,7 @@ export default function TopBar({ onToggleSidebar, isSidebarOpen }: TopBarProps =
             </span>
             <span className="text-[10px] text-slate-400 mt-0.5 font-mono">Institutional Pro Desk</span>
           </div>
-        </div>
+        </Link>
       </div>
     </header>
   );

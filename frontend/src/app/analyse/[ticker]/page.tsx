@@ -248,10 +248,39 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
 
   return (
     <div className="app-container animate-fade-in">
-      {/* Return button */}
-      <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: "8px", color: "var(--text-secondary)", marginBottom: "30px", fontWeight: 500, fontSize: "0.95rem" }}>
-        ← Dashboard
-      </Link>
+      {/* Top Nav & Equity Switcher */}
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-6 pb-3 border-b border-slate-200">
+        <div className="flex items-center gap-3">
+          <Link href="/analyse" className="text-xs font-semibold text-blue-600 hover:underline flex items-center gap-1">
+            ← All Equities
+          </Link>
+          <span className="text-slate-300">|</span>
+          <Link href="/" className="text-xs font-semibold text-slate-500 hover:text-slate-800">
+            Master Console
+          </Link>
+        </div>
+
+        {/* Quick Stock Switcher Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto py-1">
+          <span className="text-[11px] text-slate-400 font-medium mr-1">Switch Stock:</span>
+          {["RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK", "TATAMOTORS", "LT", "ITC", "BHARTIARTL", "SBIN"].map((s) => {
+            const isCurrent = ticker.toUpperCase().replace(/\.(NS|BO)$/i, "") === s;
+            return (
+              <Link
+                key={s}
+                href={`/analyse/${s}`}
+                className={`px-2 py-0.5 text-xs font-mono rounded transition ${
+                  isCurrent
+                    ? "bg-blue-600 text-white font-bold"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                }`}
+              >
+                {s}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Stock Quote Header */}
       <section style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "20px", marginBottom: "40px" }}>

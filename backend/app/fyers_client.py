@@ -87,10 +87,14 @@ class FyersClient:
         limiter: Optional[RateLimiter] = None,
         max_throttle_wait: float = 20.0,
     ):
-        self.app_id = app_id or os.getenv("FYERS_APP_ID", "")
-        self.secret_id = secret_id or os.getenv("FYERS_SECRET_ID", "")
+        auth_disabled = (
+            os.getenv("DISABLE_AUTH", "").lower() in ("true", "1", "yes")
+            or os.getenv("AUTH_DISABLED", "").lower() in ("true", "1", "yes")
+        )
+        self.app_id = app_id or os.getenv("FYERS_APP_ID", "") or ("DOCKER-DEV-APP-ID" if auth_disabled else "")
+        self.secret_id = secret_id or os.getenv("FYERS_SECRET_ID", "") or ("DOCKER-DEV-SECRET" if auth_disabled else "")
         self.redirect_uri = redirect_uri or os.getenv("FYERS_REDIRECT_URI", "")
-        self.access_token = access_token or os.getenv("FYERS_ACCESS_TOKEN", "")
+        self.access_token = access_token or os.getenv("FYERS_ACCESS_TOKEN", "") or ("DOCKER-LOCAL-DEV-TOKEN" if auth_disabled else "")
         self.refresh_token = ""
         self._timeout = timeout
         # Shared by default: the quota belongs to the app key, and a new client
@@ -98,7 +102,7 @@ class FyersClient:
         self._limiter = limiter or fyers_limiter
         self._max_throttle_wait = max_throttle_wait
 
-        if not self.app_id:
+        if not self.app_id and not auth_disabled:
             raise FyersError("FYERS_APP_ID is not set")
 
     # ---- login flow ------------------------------------------------------

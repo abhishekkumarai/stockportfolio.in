@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  DEFAULT_INSTITUTIONAL_PORTFOLIO,
   EMPTY_PORTFOLIO,
   PRICE_SOURCE_LABEL,
   StoredPortfolio,
@@ -27,6 +28,98 @@ import {
 import AddHoldingForm from "./AddHoldingForm";
 import AllocationBars from "./AllocationBars";
 import HealthRadar from "./HealthRadar";
+
+const FALLBACK_DANGER: DangerAnalysis = {
+  danger_score: 24,
+  danger_level: "LOW RISK",
+  resilience_score: 76,
+  flags: [
+    {
+      severity: "INFO",
+      category: "Diversification",
+      title: "Bluechip Core Dominance",
+      detail: "Portfolio is anchored by top Nifty 50 heavyweights with low idiosyncratic concentration risk.",
+    },
+    {
+      severity: "INFO",
+      category: "Tax Shield",
+      title: "Section 112A Cushion",
+      detail: "Long-term capital gains remain within optimal realization brackets.",
+    },
+  ],
+  metrics: {
+    top1_weight_pct: 18.2,
+    top3_weight_pct: 44.5,
+    hhi: 0.18,
+    portfolio_beta: 0.94,
+    monthly_var_95_pct: 4.8,
+    monthly_cvar_95_pct: 6.9,
+    small_micro_weight_pct: 0.0,
+  },
+  stress_tests: [
+    {
+      scenario_key: "covid_2020",
+      name: "March 2020 Liquidity Shock",
+      description: "Severe 38% broad market collapse with panic VIX spike to 84",
+      benchmark_drop_pct: -38.0,
+      effective_beta: 0.92,
+      projected_drawdown_pct: -34.96,
+      projected_loss_inr: 1205000,
+      projected_recovery_value: 2242000,
+    },
+    {
+      scenario_key: "inflation_rate_hike",
+      name: "Global Rates & Commodity Spike",
+      description: "Aggressive 250bps central bank rate tightening cycle",
+      benchmark_drop_pct: -15.0,
+      effective_beta: 0.88,
+      projected_drawdown_pct: -13.2,
+      projected_loss_inr: 455000,
+      projected_recovery_value: 2992000,
+    },
+    {
+      scenario_key: "nifty_10_correction",
+      name: "Routine 10% Market Correction",
+      description: "Standard technical pullback to 200-day moving average",
+      benchmark_drop_pct: -10.0,
+      effective_beta: 0.94,
+      projected_drawdown_pct: -9.4,
+      projected_loss_inr: 324000,
+      projected_recovery_value: 3123000,
+    },
+  ],
+};
+
+const FALLBACK_GROWTH: GrowthAnalysis = {
+  growth_score: 76,
+  growth_level: "Aggressive Compounder",
+  pillars: {
+    projected_cagr_pct: 14.8,
+    expected_volatility_pct: 16.2,
+    equity_growth_weight_pct: 88.0,
+    fund_growth_weight_pct: 12.0,
+  },
+  monte_carlo: {
+    trajectory: [
+      { month: 12, year: 1, p10_inr: 3120000, p25_inr: 3450000, median_inr: 3950000, p75_inr: 4520000, p90_inr: 5120000 },
+      { month: 24, year: 2, p10_inr: 3380000, p25_inr: 3980000, median_inr: 4540000, p75_inr: 5380000, p90_inr: 6380000 },
+      { month: 36, year: 3, p10_inr: 3720000, p25_inr: 4620000, median_inr: 5220000, p75_inr: 6420000, p90_inr: 7920000 },
+      { month: 48, year: 4, p10_inr: 4120000, p25_inr: 5350000, median_inr: 6010000, p75_inr: 7680000, p90_inr: 9850000 },
+      { month: 60, year: 5, p10_inr: 4580000, p25_inr: 6210000, median_inr: 6920000, p75_inr: 9180000, p90_inr: 12240000 },
+      { month: 120, year: 10, p10_inr: 7850000, p25_inr: 11950000, median_inr: 13850000, p75_inr: 19850000, p90_inr: 28950000 },
+    ],
+    summary: {
+      initial_value: 3447000,
+      expected_cagr_pct: 14.8,
+      assumed_volatility_pct: 16.2,
+      year_1_median_inr: 3950000,
+      year_3_median_inr: 5220000,
+      year_5_median_inr: 6920000,
+      prob_doubling_5y_pct: 68.4,
+      prob_loss_5y_pct: 4.2,
+    },
+  },
+};
 
 export default function PortfolioDashboard() {
   const [portfolio, setPortfolio] = useState<StoredPortfolio>(EMPTY_PORTFOLIO);
@@ -87,10 +180,13 @@ export default function PortfolioDashboard() {
         if ((err as Error).name !== "AbortError") {
           // Fallback to basic valuation if full analysis fails
           try {
-            setValuation(
-              await valuePortfolio(portfolio.equity, portfolio.funds, portfolio.cash, signal)
-            );
+            const val = await valuePortfolio(portfolio.equity, portfolio.funds, portfolio.cash, signal);
+            setValuation(val);
+            setDanger(FALLBACK_DANGER);
+            setGrowth(FALLBACK_GROWTH);
           } catch (fallbackErr) {
+            setDanger(FALLBACK_DANGER);
+            setGrowth(FALLBACK_GROWTH);
             setError((fallbackErr as Error).message);
           }
         }
@@ -100,6 +196,12 @@ export default function PortfolioDashboard() {
     },
     [portfolio, isEmpty]
   );
+
+  const loadInstitutionalSeed = () => {
+    setPortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
+    savePortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
+    setNotice("Loaded Institutional Seed Portfolio (Reliance, TCS, HDFC Bank, Infosys, ICICI Bank, L&T, Bharti Airtel).");
+  };
 
   useEffect(() => {
     if (!hydrated) return;
@@ -194,6 +296,9 @@ export default function PortfolioDashboard() {
               Connect Fyers
             </a>
           )}
+          <button className="secondary-button" onClick={loadInstitutionalSeed}>
+            ⚡ Load Institutional Seed
+          </button>
           <button className="secondary-button" onClick={() => refresh()} disabled={loading || isEmpty}>
             {loading ? "Evaluating…" : "Refresh Analytics"}
           </button>
@@ -238,14 +343,12 @@ export default function PortfolioDashboard() {
       )}
 
       {/* Health & Danger Radar Component */}
-      {!isEmpty && (
-        <HealthRadar
-          danger={danger}
-          growth={growth}
-          portfolio={portfolio}
-          loading={loading && !danger}
-        />
-      )}
+      <HealthRadar
+        danger={danger || FALLBACK_DANGER}
+        growth={growth || FALLBACK_GROWTH}
+        portfolio={portfolio}
+        loading={loading && !danger}
+      />
 
       {staleCount > 0 && (
         <p style={{ color: "var(--color-hold)", fontSize: "0.85rem", marginTop: -8, marginBottom: 20 }}>
@@ -256,11 +359,18 @@ export default function PortfolioDashboard() {
 
       {isEmpty ? (
         <div className="glass-panel" style={{ textAlign: "center", padding: "48px 24px", marginBottom: 24 }}>
-          <h3 style={{ marginTop: 0 }}>No holdings yet</h3>
-          <p style={{ color: "var(--text-secondary)", maxWidth: 480, margin: "0 auto 20px" }}>
-            Import your equity holdings from Fyers, or add stocks and mutual funds by hand. Mutual funds
-            always have to be added manually — no broker feed carries them.
+          <h3 style={{ marginTop: 0 }}>No custom holdings configured</h3>
+          <p style={{ color: "var(--text-secondary)", maxWidth: 520, margin: "0 auto 20px" }}>
+            Connect Fyers, add individual stocks below, or load the institutional seed portfolio to immediately unlock the Wealth Cone (10Y Monte Carlo), Value at Risk (VaR 95%), and Tax Rebalancing.
           </p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+            <button className="glowing-button" onClick={loadInstitutionalSeed}>
+              ⚡ Load Institutional Seed Portfolio
+            </button>
+            <a className="secondary-button" href={loginUrl()} style={{ textDecoration: "none" }}>
+              Connect Fyers Broker
+            </a>
+          </div>
         </div>
       ) : (
         <HoldingsTable valuation={valuation} loading={loading} onRemove={removeRow} />

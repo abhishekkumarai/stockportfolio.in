@@ -193,8 +193,8 @@ export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
               </Link>
 
               <Link
-                href="/analyse/RELIANCE"
-                onClick={() => handleNav("/analyse/RELIANCE")}
+                href="/analyse"
+                onClick={() => handleNav("/analyse")}
                 className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
                   pathname.startsWith("/analyse")
                     ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
@@ -346,17 +346,21 @@ export default function Sidebar({ onNavigate, onClose }: SidebarProps = {}) {
       </div>
 
       {/* Footer Broker Connection Status */}
-      <div className="p-3 border-t border-slate-200 bg-slate-50 text-xs">
+      <Link
+        href="/auth"
+        onClick={() => handleNav("/auth")}
+        className="p-3 border-t border-slate-200 bg-slate-50 text-xs block hover:bg-slate-100 transition group text-decoration-none"
+      >
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[11px] font-medium text-slate-600">Fyers API Status</span>
+          <span className="text-[11px] font-medium text-slate-600 group-hover:text-blue-600 transition">Broker Auth Gateway</span>
           <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connected
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> {fyersStatus?.connected ? "Live Active" : "Pro Desk Demo"}
           </span>
         </div>
         <div className="text-[10px] text-slate-400 font-mono truncate">
-          Token: FYERS-NSE-PRO-8491 (Exp 18h)
+          {fyersStatus?.fy_id ? `ID: ${fyersStatus.fy_id}` : "Token: FYERS-NSE-PRO-8491"} ↗
         </div>
-      </div>
+      </Link>
     </aside>
   );
 }
