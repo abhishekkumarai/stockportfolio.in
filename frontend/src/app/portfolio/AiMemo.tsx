@@ -96,7 +96,7 @@ export default function AiMemo({ portfolio }: { portfolio: StoredPortfolio }) {
       </div>
 
       {status && !status.configured && (
-        <div className="glass-panel" style={{ borderColor: "var(--color-hold)", marginBottom: 16 }}>
+        <div className="glass-panel" style={{ borderColor: "var(--color-hold)", marginBottom: 16, padding: "16px 20px" }}>
           <strong style={{ color: "var(--color-hold)" }}>The AI layer is not configured</strong>
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)", fontSize: "0.88rem" }}>{status.note}</p>
         </div>
@@ -110,7 +110,7 @@ export default function AiMemo({ portfolio }: { portfolio: StoredPortfolio }) {
       )}
 
       {error && (
-        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 16 }}>
+        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 16, padding: "14px 18px" }}>
           <p style={{ margin: 0, color: "var(--color-sell)" }}>{error}</p>
         </div>
       )}
@@ -135,6 +135,7 @@ export default function AiMemo({ portfolio }: { portfolio: StoredPortfolio }) {
                   ? "var(--color-hold)"
                   : "var(--color-buy)",
               marginBottom: 16,
+              padding: "16px 20px",
             }}
           >
             <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.88rem" }}>
@@ -150,7 +151,7 @@ export default function AiMemo({ portfolio }: { portfolio: StoredPortfolio }) {
             </p>
           </div>
 
-          <article style={{ lineHeight: 1.65, color: "var(--text-secondary)" }}>
+          <article style={{ lineHeight: 1.65, color: "var(--text-secondary)", padding: "24px 28px", background: "#ffffff", borderRadius: 8, border: "1px solid var(--border-subtle)", boxShadow: "0 1px 2px 0 rgba(15, 23, 42, 0.04)" }}>
             <Markdown source={report.report_markdown} />
           </article>
         </>

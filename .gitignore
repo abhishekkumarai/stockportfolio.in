@@ -21,6 +21,7 @@ env/
 ignore_offline/
 .claude/
 
-# OS
+# OS & Temp
 .DS_Store
 Thumbs.db
+*.png

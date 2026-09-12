@@ -544,8 +544,13 @@ h1 {
   background: #ffffff;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
+  padding: 20px;
   box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.glass-panel-flush {
+  padding: 0 !important;
 }
 
 .glass-panel:hover, .portfolio-card:hover, .stat-card:hover {

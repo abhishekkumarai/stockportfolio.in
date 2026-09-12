@@ -5,7 +5,7 @@ import TopBar from "@/components/TopBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "stockportfolio.in | Institutional Quant Alpha & Portfolio Intelligence Terminal",
+  title: "StockPortfolio.in | Institutional Quant Alpha & Portfolio Intelligence Terminal",
   description:
     "Institutional quant risk, Danger vs Growth radar, tax-aware rebalancing, Piotroski forensics, walk-forward ML alpha factor matrix, and macro transmission radar for Indian equities.",
 };
@@ -16,34 +16,36 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="bg-slate-50 font-sans text-slate-900 antialiased">
-        <div className="app-layout-container">
+    <html lang="en" className="overflow-x-hidden">
+      <body className="bg-slate-50 font-sans text-slate-900 antialiased overflow-x-hidden min-h-screen w-full max-w-full">
+        <div className="flex w-full max-w-full min-h-screen overflow-x-hidden">
           {/* Left-Side Fixed Enterprise Navigation Rail */}
-          <Sidebar />
+          <div className="hidden lg:block shrink-0">
+            <Sidebar />
+          </div>
 
           {/* Right Main Viewport */}
-          <div className="app-main-viewport bg-slate-50">
-            {/* Top Real-Time Ticker & Command Bar */}
+          <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen overflow-x-hidden bg-slate-50">
+            {/* Top Real-Time Command Bar */}
             <TopBar />
 
             {/* Main Content Viewport */}
-            <main className="viewport-main-content">{children}</main>
+            <main className="flex-1 min-w-0 w-full max-w-full overflow-x-hidden">
+              {children}
+            </main>
 
             {/* Institutional Compact Footer */}
-            <footer className="compact-footer">
-              <div className="compact-footer-content">
-                <span className="font-medium text-slate-600">
-                  © 2026 stockportfolio.in · Institutional Portfolio Intelligence & Quant Alpha Console
-                </span>
-                <span className="footer-disclaimer font-mono text-[11px] text-slate-500">
-                  NSE/BSE End-of-Day & Live indicative telemetry. Not SEBI registered investment advice.
-                </span>
-              </div>
+            <footer className="w-full border-t border-slate-200 bg-white py-3 px-6 text-xs text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2 font-mono">
+              <span>
+                © 2026 StockPortfolio.in · Institutional Decision Support & Quantitative Execution Desk
+              </span>
+              <span className="text-[11px] text-slate-400">
+                NSE/BSE End-of-Day & Live Indicative Telemetry. Not SEBI Registered Investment Advice.
+              </span>
             </footer>
           </div>
         </div>
-        <Analytics />
+        {process.env.VERCEL && <Analytics />}
       </body>
     </html>
   );

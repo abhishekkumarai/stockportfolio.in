@@ -113,7 +113,7 @@ export default function OptionsConsole() {
     <div className="app-container animate-fade-in">
       <Heading />
 
-      <div className="glass-panel" style={{ marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div className="glass-panel" style={{ marginBottom: 20, display: "flex", gap: 14, flexWrap: "wrap", alignItems: "flex-end", padding: "18px 22px" }}>
         <label style={{ flex: "1 1 180px" }}>
           <FieldLabel>Underlying</FieldLabel>
           <input
@@ -166,7 +166,7 @@ export default function OptionsConsole() {
       </div>
 
       {error && (
-        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 20 }}>
+        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 20, padding: "16px 20px" }}>
           <strong style={{ color: "var(--color-sell)" }}>Chain unavailable</strong>
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>{error}</p>
         </div>
@@ -193,7 +193,7 @@ export default function OptionsConsole() {
             />
           </div>
 
-          <div className="glass-panel" style={{ marginBottom: 20 }}>
+          <div className="glass-panel" style={{ marginBottom: 20, padding: "18px 22px" }}>
             <p style={{ margin: 0, color: "var(--text-secondary)" }}>{analysis.pcr.interpretation}</p>
             {analysis.iv.available && analysis.iv.interpretation && (
               <p style={{ margin: "8px 0 0", color: "var(--text-secondary)" }}>{analysis.iv.interpretation}</p>
@@ -204,7 +204,7 @@ export default function OptionsConsole() {
           </div>
 
           {oiByStrike && (
-            <div className="glass-panel" style={{ marginBottom: 20 }}>
+            <div className="glass-panel" style={{ marginBottom: 20, padding: "20px 24px" }}>
               <h3 style={{ marginTop: 0 }}>Open interest by strike</h3>
               <div style={{ height: 300 }}>
                 <Bar
@@ -241,7 +241,7 @@ export default function OptionsConsole() {
             </div>
           )}
 
-          <div className="glass-panel" style={{ marginBottom: 20 }}>
+          <div className="glass-panel" style={{ marginBottom: 20, padding: "20px 24px" }}>
             <h3 style={{ marginTop: 0 }}>OI build-up</h3>
             <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginTop: 0 }}>
               Open interest against price: fresh positions and unwinding read as opposites even when
@@ -282,7 +282,7 @@ export default function OptionsConsole() {
       )}
 
       {analysis && !analysis.available && (
-        <div className="glass-panel" style={{ marginBottom: 20 }}>
+        <div className="glass-panel" style={{ marginBottom: 20, padding: "18px 22px" }}>
           <strong>No chain analysis</strong>
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>{analysis.reason}</p>
         </div>

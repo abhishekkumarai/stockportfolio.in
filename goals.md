@@ -60,6 +60,8 @@ graph TD
 | **Phase 12** | **Local Containerised Stack** | Platform | ✅ Completed (local) | Postgres + Redis via `docker-compose.yml`, Redis-backed APScheduler job store and run lock, scheduler-only worker, one-shot migrate service |
 | **Phase 13** | **Ranked Buy/Sell Board + shadcn/ui** | Core | ✅ Completed (local) | `recommendations.py`, `/api/recommendations`, `/recommendations` console, shadcn/ui + Tailwind v4 as the base component system |
 | **Phase 14** | **India Macro, Market Pulse & Quant ML Alpha Radar** | Core / Extensions | ✅ Completed | `macro.py`, `market_pulse.py`, `ml/`, `/api/macro`, `/api/market-pulse`, `/api/ml/rankings`, `/macro`, `/pulse`, AI Radar tab on `/recommendations` |
+| **Phase 15** | **Institutional Light-Theme Overhaul** | Design / UI | ✅ Completed | Ant Design Pro + Tailwind Enterprise, `#F8FAFC` canvas, `#FFFFFF` cards, 1px `#E2E8F0` borders, zero AI-slop |
+| **Phase 16** | **Tax Rebalancing, Catalysts, AI Memo & Layout Boundaries** | Core / Extensions | 🟢 In Progress | STCG 20%, LTCG 12.5% (> ₹1.25L), zero-tax cash inflow, holding news, verified AI memo, boundary polish |
 
 ### Where the roadmap actually stands
 

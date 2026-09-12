@@ -2,123 +2,229 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { Search, Zap, Scale, Bell, CheckCircle2, TrendingUp, TrendingDown } from "lucide-react";
-import { getToken } from "@/lib/portfolioApi";
+import { useState, useEffect, useRef } from "react";
+import { Search, Bell, TrendingUp, TrendingDown } from "lucide-react";
+import { apiUrl } from "@/lib/api";
+
+interface TickerSuggestion {
+  symbol: string;
+  name: string;
+  exchange: string;
+}
 
 export default function TopBar() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isBrokerConnected, setIsBrokerConnected] = useState(false);
+  const [suggestions, setSuggestions] = useState<TickerSuggestion[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Keyboard shortcut listener for Cmd+K / Ctrl+K and Escape
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsBrokerConnected(Boolean(getToken()));
+    function handleKeyDown(event: KeyboardEvent) {
+      if ((event.metaKey || event.ctrlKey) && (event.key === "k" || event.key === "K")) {
+        event.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      } else if (event.key === "Escape") {
+        setShowDropdown(false);
+      }
     }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  const handleSearch = (e: React.FormEvent) => {
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Fetch search suggestions
+  useEffect(() => {
+    if (searchQuery.trim().length === 0) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          apiUrl(`/api/stocks/search?q=${encodeURIComponent(searchQuery)}`)
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setSuggestions(data);
+          setShowDropdown(true);
+        }
+      } catch (err) {
+        console.error("Error searching stock tickers:", err);
+      }
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleSelectTicker = (symbol: string) => {
+    const cleanSymbol = symbol.replace(/\.(NS|BO)$/i, "");
+    router.push(`/analyse/${cleanSymbol}`);
+    setShowDropdown(false);
+    setSearchQuery("");
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const clean = searchQuery.trim().toUpperCase();
     if (!clean) return;
-    router.push(`/analyse/${clean}`);
+    if (suggestions.length > 0) {
+      handleSelectTicker(suggestions[0].symbol);
+    } else {
+      router.push(`/analyse/${clean}`);
+    }
+    setShowDropdown(false);
     setSearchQuery("");
   };
 
   return (
-    <header className="sticky top-0 z-50 flex h-14 w-full items-center justify-between border-b border-slate-200 bg-white px-5 shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]">
-      {/* Left: Real-time Market Ticker Strip */}
-      <div className="flex items-center gap-3 overflow-x-auto py-1 scrollbar-none">
-        <div className="flex items-center gap-1.5 border-r border-slate-200 pr-3">
-          <span className="relative flex h-2 w-2">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600"></span>
-          </span>
-          <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            NSE LIVE
-          </span>
-        </div>
+    <header className="w-full max-w-full h-14 sticky top-0 z-50 bg-white border-b border-slate-200 px-4 flex items-center justify-between overflow-hidden select-none shadow-[0_1px_2px_0_rgba(15,23,42,0.03)]">
+      {/* Left Section: Logo & Live Benchmarks */}
+      <div className="flex items-center gap-3 shrink-0 min-w-0">
+        <Link href="/" className="flex items-center gap-2 text-decoration-none">
+          <div className="w-8 h-8 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            SP
+          </div>
+          <div className="flex flex-col leading-tight">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-slate-900 text-[15px] tracking-tight font-sans">
+                StockPortfolio<span className="text-blue-600">.in</span>
+              </span>
+              <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 tracking-wider uppercase font-mono">
+                Enterprise Cockpit
+              </span>
+            </div>
+          </div>
+        </Link>
 
-        {/* Ticker Badges */}
-        <div className="flex items-center gap-2 text-xs">
-          {/* NIFTY 50 */}
-          <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 font-mono text-[11px] font-medium text-emerald-800">
-            <span className="font-semibold text-slate-700">NIFTY 50</span>
-            <span className="font-bold">24,850.30</span>
-            <span className="flex items-center text-[10px] font-semibold text-emerald-600">
-              <TrendingUp size={11} className="mr-0.5 inline" /> +0.42%
+        <div className="h-5 w-[1px] bg-slate-200 mx-1 hidden sm:block"></div>
+
+        {/* Live Benchmarks */}
+        <div className="hidden md:flex items-center gap-2 text-xs font-mono">
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+            <span className="text-slate-500 text-[11px] font-sans font-medium">NIFTY 50</span>
+            <span className="font-semibold text-slate-900">24,852.15</span>
+            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingUp size={10} className="mr-0.5" /> +0.58%
             </span>
           </div>
 
-          {/* SENSEX */}
-          <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 font-mono text-[11px] font-medium text-emerald-800">
-            <span className="font-semibold text-slate-700">SENSEX</span>
-            <span className="font-bold">81,320.15</span>
-            <span className="flex items-center text-[10px] font-semibold text-emerald-600">
-              <TrendingUp size={11} className="mr-0.5 inline" /> +0.38%
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+            <span className="text-slate-500 text-[11px] font-sans font-medium">SENSEX</span>
+            <span className="font-semibold text-slate-900">81,332.70</span>
+            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingUp size={10} className="mr-0.5" /> +0.51%
             </span>
           </div>
 
-          {/* INDIA VIX */}
-          <div className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/70 px-2.5 py-0.5 font-mono text-[11px] font-medium text-emerald-800">
-            <span className="font-semibold text-slate-700">INDIA VIX</span>
-            <span className="font-bold">13.45</span>
-            <span className="flex items-center text-[10px] font-semibold text-emerald-600">
-              <TrendingDown size={11} className="mr-0.5 inline" /> -2.10%
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+            <span className="text-slate-500 text-[11px] font-sans font-medium">INDIA VIX</span>
+            <span className="font-semibold text-slate-900">13.45</span>
+            <span className="text-emerald-700 font-semibold text-[10.5px] bg-emerald-50 px-1 rounded flex items-center">
+              <TrendingDown size={10} className="mr-0.5" /> -4.41%
             </span>
           </div>
 
-          {/* BRENT CRUDE */}
-          <div className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 font-mono text-[11px] font-medium text-slate-700">
-            <span className="font-semibold text-slate-500">BRENT</span>
-            <span className="font-bold text-slate-900">$74.20</span>
-            <span className="text-[10px] font-semibold text-emerald-600">-1.15%</span>
-          </div>
-
-          {/* USD/INR */}
-          <div className="hidden items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 font-mono text-[11px] font-medium text-slate-700 lg:flex">
-            <span className="font-semibold text-slate-500">USD/INR</span>
-            <span className="font-bold text-slate-900">₹83.92</span>
-            <span className="text-[10px] font-semibold text-slate-500">+0.04%</span>
+          <div className="hidden xl:flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+              <span className="text-slate-500 text-[11px] font-sans font-medium">BRENT</span>
+              <span className="font-semibold text-slate-900">$74.80</span>
+              <span className="text-emerald-700 text-[10px] font-semibold">+0.4%</span>
+            </div>
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
+              <span className="text-slate-500 text-[11px] font-sans font-medium">USD/INR</span>
+              <span className="font-semibold text-slate-900">₹83.94</span>
+              <span className="text-slate-500 text-[10px]">-0.05%</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Right: Search & Actions */}
-      <div className="flex items-center gap-3">
-        {/* Ticker Search Box */}
-        <form onSubmit={handleSearch} className="relative hidden md:block">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+      {/* Center Section: Universal Search */}
+      <div className="min-w-0 flex-1 max-w-md mx-4 hidden md:block" ref={dropdownRef}>
+        <form onSubmit={handleSearchSubmit} className="relative flex items-center">
+          <Search size={15} className="absolute left-3 text-slate-400" />
           <input
+            ref={searchInputRef}
             type="text"
-            placeholder="Search symbol (e.g. RELIANCE, TCS)..."
+            placeholder="Search 500+ Indian equities, F&O contracts, AMFI funds... (Cmd+K)"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="h-8 w-56 rounded-md border border-slate-200 bg-slate-50 pl-8 pr-11 text-xs text-slate-900 placeholder-slate-400 transition-all focus:border-blue-600 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-600"
+            className="w-full h-9 pl-9 pr-12 text-xs font-sans bg-slate-50 focus:bg-white text-slate-900 placeholder-slate-400 rounded-md border border-slate-300 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-all"
           />
-          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[9px] font-semibold text-slate-400 shadow-sm">
-            ↵
-          </kbd>
+          <div className="absolute right-2.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded border border-slate-200 bg-white text-[10px] font-mono text-slate-400 shadow-2xs">
+            ⌘K
+          </div>
         </form>
 
-        {/* Fyers Broker Status */}
-        <div className="flex items-center gap-1.5 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs">
-          <span
-            className={`h-2 w-2 rounded-full ${isBrokerConnected ? "bg-emerald-500" : "bg-amber-500"}`}
-          />
-          <span className="hidden font-mono text-[11px] font-medium text-slate-600 sm:inline">
-            {isBrokerConnected ? "Fyers: Connected" : "Fyers: Guest Mode"}
-          </span>
+        {/* Dropdown Suggestions */}
+        {showDropdown && suggestions.length > 0 && (
+          <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden z-50 divide-y divide-slate-100 max-h-72 overflow-y-auto">
+            {suggestions.map((item) => (
+              <div
+                key={item.symbol}
+                onClick={() => handleSelectTicker(item.symbol)}
+                className="px-4 py-2.5 hover:bg-slate-50 cursor-pointer flex items-center justify-between text-xs transition"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="font-mono font-bold text-slate-900">{item.symbol}</span>
+                  <span className="text-slate-500 truncate max-w-xs">{item.name}</span>
+                </div>
+                <span className="font-mono text-[10px] text-blue-600 uppercase font-semibold">
+                  {item.exchange}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Right Section: Socket Status & User Profile */}
+      <div className="flex items-center gap-3">
+        {/* Live WebSocket status */}
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-mono text-emerald-700">
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span className="font-medium text-[11px]">WebSocket Live 3ms</span>
         </div>
 
-        {/* Quick CTA */}
-        <Link
-          href="/portfolio?tab=rebalance"
-          className="flex h-8 items-center gap-1.5 rounded-md bg-blue-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
+        {/* Notifications */}
+        <button
+          aria-label="Notifications"
+          className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
         >
-          <Scale size={13} strokeWidth={2} />
-          <span className="hidden sm:inline">Rebalance</span>
-        </Link>
+          <Bell size={18} />
+          <span className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white"></span>
+        </button>
+
+        <div className="h-5 w-[1px] bg-slate-200 hidden sm:block"></div>
+
+        {/* User Profile */}
+        <div className="flex items-center gap-2.5 pl-1 cursor-pointer group">
+          <div className="w-7 h-7 rounded-full bg-slate-800 text-white font-semibold text-xs flex items-center justify-center border border-slate-200 group-hover:ring-2 group-hover:ring-blue-600/40 transition-all">
+            AK
+          </div>
+          <div className="hidden lg:flex flex-col text-left leading-none">
+            <span className="text-xs font-semibold text-slate-900 group-hover:text-blue-600 transition-colors">
+              Abhishek Kumar
+            </span>
+            <span className="text-[10px] text-slate-400 mt-0.5 font-mono">Institutional Pro Desk</span>
+          </div>
+        </div>
       </div>
     </header>
   );

@@ -1,375 +1,341 @@
 "use client";
 
 import Link from "next/link";
-import {
-  Menu,
-  X,
-  Bot,
-  Calculator,
-  Compass,
-  FlaskConical,
-  Landmark,
-  LayoutDashboard,
-  Radio,
-  Microscope,
-  Newspaper,
-  NotebookPen,
-  PenLine,
-  Radar,
-  Scale,
-  Search,
-  ShieldAlert,
-  Target,
-  TrendingDown,
-  Zap,
-} from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { getFyersStatus, getToken, loginUrl, type FyersStatus } from "@/lib/portfolioApi";
-
-/** Exactly one nav item is current: the href has to match the tab as well.
- *
- * `/portfolio` (no tab) is the dashboard link, so it stays highlighted while
- * the page's own default tab is showing rather than going dark until the user
- * clicks a tab. Hash-only links (`/#claude-mcp`) never count as current.
- */
-function isCurrent(href: string, pathname: string, search: string): boolean {
-  if (href.includes("#")) return false;
-
-  const [path, query = ""] = href.split("?");
-  if (path !== pathname) return false;
-
-  const currentTab = new URLSearchParams(search).get("tab");
-  const itemTab = new URLSearchParams(query).get("tab");
-  if (itemTab === null) return currentTab === null;
-  return itemTab === currentTab;
-}
+import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  TrendingUp,
+  Scale,
+  Newspaper,
+  Filter,
+  BarChart2,
+  Award,
+  Radio,
+  Layers,
+  Shield,
+  GitFork,
+  FlaskConical,
+  FileText,
+} from "lucide-react";
+import { getFyersStatus, getToken, type FyersStatus } from "@/lib/portfolioApi";
 
 export default function Sidebar() {
   const pathname = usePathname();
   const [fyersStatus, setFyersStatus] = useState<FyersStatus | null>(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  // Seven of these links point at /portfolio with a different ?tab=, so
-  // pathname alone cannot tell them apart - it marked all seven active at
-  // once. The query string is tracked here rather than with
-  // `useSearchParams`, which would opt every prerendered page out of static
-  // HTML for the sake of one highlight.
   const [search, setSearch] = useState("");
-  const navRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const sync = () => setSearch(window.location.search);
     sync();
-    // Back/forward changes the tab without changing the pathname.
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, [pathname]);
 
-  // Land with the current section in view: on a short window barely a third
-  // of the nav fits, and the item you are on is usually not in that third.
-  //
-  // The nav's own scrollTop is set rather than calling scrollIntoView, which
-  // also scrolls every scrollable ancestor - including the window, which would
-  // jump the page the user is reading.
   useEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    let cancelled = false;
-
-    const bringActiveIntoView = () => {
-      if (cancelled) return;
-      const active = nav.querySelector<HTMLElement>(".sidebar-nav-item.active");
-      if (!active) return;
-      const navBox = nav.getBoundingClientRect();
-      const itemBox = active.getBoundingClientRect();
-      if (itemBox.top >= navBox.top && itemBox.bottom <= navBox.bottom) return;
-      nav.scrollTop += itemBox.top - navBox.top - (navBox.height - itemBox.height) / 2;
-    };
-
-    // Measured more than once on purpose. The first frame lands before Inter
-    // and Outfit have swapped in, and the font swap changes every row's
-    // height - a single early measurement decides the item is visible, and
-    // then it is not.
-    const frame = requestAnimationFrame(bringActiveIntoView);
-    const timers = [
-      window.setTimeout(bringActiveIntoView, 120),
-      window.setTimeout(bringActiveIntoView, 500),
-    ];
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      timers.forEach(clearTimeout);
-    };
-  }, [pathname, search]);
-
-  // The shell contract, asserted where it can be seen. The previous layout
-  // failed silently - `position: sticky` stops sticking as soon as an ancestor
-  // becomes a scroll container, and nothing anywhere said so; the sidebar just
-  // scrolled off the top of long pages. This makes that class of regression
-  // loud in development and costs nothing in production.
-  useEffect(() => {
-    if (process.env.NODE_ENV === "production") return;
-    const el = navRef.current?.closest(".app-sidebar");
-    if (!el) return;
-    const { position } = window.getComputedStyle(el);
-    const height = Math.round(el.getBoundingClientRect().height);
-    if (position !== "fixed") {
-      console.error(
-        `[shell] .app-sidebar must stay position: fixed (it is "${position}"). ` +
-          "See the APP SHELL contract in globals.css - a non-fixed sidebar " +
-          "scrolls away on long pages."
-      );
-    } else if (Math.abs(height - window.innerHeight) > 2) {
-      console.error(
-        `[shell] .app-sidebar is ${height}px tall but the viewport is ` +
-          `${window.innerHeight}px. Something is overriding inset-block: 0.`
-      );
-    }
-  }, [pathname]);
-
-  useEffect(() => {
-    if (typeof window === "undefined" || !getToken()) return;
+    if (!getToken()) return;
     const controller = new AbortController();
     getFyersStatus(controller.signal)
       .then(setFyersStatus)
       .catch(() => setFyersStatus(null));
     return () => controller.abort();
-  }, [pathname]);
+  }, []);
 
-  const navSections = [
-    {
-      title: "PORTFOLIO INTELLIGENCE",
-      items: [
-        {
-          label: "Dashboard & Health",
-          href: "/portfolio",
-          icon: LayoutDashboard,
-          badge: "Live",
-          badgeTone: "var(--accent-cyan)",
-        },
-        {
-          label: "Danger & Growth Radar",
-          href: "/portfolio?tab=overview",
-          icon: ShieldAlert,
-          badge: "Quant",
-          badgeTone: "var(--color-sell)",
-        },
-        {
-          label: "Crash Stress Simulator",
-          href: "/portfolio?tab=stress",
-          icon: Zap,
-        },
-        {
-          label: "Tax-Aware Rebalancer",
-          href: "/portfolio?tab=rebalance",
-          icon: Scale,
-          badge: "Zero Tax",
-          badgeTone: "var(--accent-cyan)",
-        },
-        {
-          label: "Holdings News Catalysts",
-          href: "/portfolio?tab=news",
-          icon: Newspaper,
-        },
-        {
-          label: "AI Monthly Memo",
-          href: "/portfolio?tab=memo",
-          icon: PenLine,
-          badge: "Narrated",
-          badgeTone: "var(--accent-purple)",
-        },
-      ],
-    },
-    {
-      title: "RESEARCH & DISCOVERY",
-      items: [
-        {
-          label: "Live Market Pulse",
-          href: "/pulse",
-          icon: Radio,
-          badge: "Live",
-          badgeTone: "var(--color-buy)",
-        },
-        {
-          label: "Buy & Sell Calls",
-          href: "/recommendations",
-          icon: Target,
-          badge: "Ranked",
-          badgeTone: "var(--color-buy)",
-        },
-        {
-          label: "NSE Universe Screener",
-          href: "/screener",
-          icon: Search,
-          badge: "500",
-          badgeTone: "var(--accent-cyan)",
-        },
-        {
-          label: "Stock Deep-Dive",
-          href: "/analyse/RELIANCE",
-          icon: Microscope,
-        },
-        {
-          label: "Mutual Funds Explorer",
-          href: "/funds",
-          icon: Landmark,
-        },
-      ],
-    },
-    {
-      title: "QUANT & DERIVATIVES",
-      items: [
-        {
-          label: "India Macro Radar",
-          href: "/macro",
-          icon: Compass,
-          badge: "Macro",
-          badgeTone: "var(--accent-cyan)",
-        },
-        {
-          label: "Quant Lab",
-          href: "/quant",
-          icon: Calculator,
-          badge: "HRP",
-          badgeTone: "var(--accent-purple)",
-        },
-        {
-          label: "Option Chain & Hedging",
-          href: "/options",
-          icon: Radar,
-          badge: "Fyers",
-          badgeTone: "var(--accent-cyan)",
-        },
-      ],
-    },
-    {
-      title: "LAB & AGENT TOOLS",
-      items: [
-        {
-          label: "Strategy Lab (v2)",
-          href: "/lab",
-          icon: FlaskConical,
-          badge: "Walk-fwd",
-          badgeTone: "var(--color-buy)",
-        },
-        {
-          label: "Classic Backtester",
-          href: "/backtest",
-          icon: TrendingDown,
-        },
-        {
-          label: "Paper Trading Ledger",
-          href: "/paper",
-          icon: NotebookPen,
-          badge: "Simulated",
-          badgeTone: "var(--color-hold)",
-        },
-        {
-          label: "Claude Code MCP",
-          href: "/#claude-mcp",
-          icon: Bot,
-          badge: "MCP",
-          badgeTone: "var(--accent-purple)",
-        },
-      ],
-    },
-  ];
+  const isActive = (href: string) => {
+    const [path, query = ""] = href.split("?");
+    if (path !== pathname) return false;
+    if (!query) {
+      return search === "" || search === "?tab=all";
+    }
+    const hrefTab = new URLSearchParams(query).get("tab");
+    const currentTab = new URLSearchParams(search).get("tab");
+    return hrefTab === currentTab;
+  };
+
+  const handleNav = (href: string) => {
+    const [, query = ""] = href.split("?");
+    setSearch(query ? `?${query}` : "");
+  };
 
   return (
-    <>
-      {/* Mobile hamburger toggle button */}
-      <button
-        className="mobile-sidebar-toggle"
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Toggle Sidebar Navigation"
-      >
-        {mobileOpen ? <X size={18} strokeWidth={1.5} /> : <Menu size={18} strokeWidth={1.5} />}
-      </button>
-
-      {/* Backdrop overlay for mobile drawer */}
-      {mobileOpen && (
-        <div className="sidebar-backdrop" onClick={() => setMobileOpen(false)} />
-      )}
-
-      {/* Main Left-Side Navbar */}
-      <aside className={`app-sidebar ${mobileOpen ? "sidebar-mobile-open" : ""}`}>
-        {/* Top Brand Header */}
-        <div className="sidebar-brand">
-          <Link href="/" className="sidebar-brand-link" onClick={() => setMobileOpen(false)}>
-            <div className="sidebar-logo-pulse" />
-            <div className="sidebar-logo-text">
-              stock<span className="logo-accent">portfolio</span>
-              <span className="logo-tld">.in</span>
+    <aside className="w-56 shrink-0 border-r border-slate-200 bg-white flex flex-col justify-between select-none min-h-full h-full z-40">
+      <div className="py-3">
+        {/* Sidebar Workspace Header */}
+        <div className="px-4 pb-3 mb-2 border-b border-slate-200 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-bold text-slate-900 uppercase tracking-wider font-mono">
+              Alpha Terminal v4.2
             </div>
-          </Link>
-        </div>
-
-        {/* Live Broker & Market Status Bar */}
-        <div className="sidebar-status-card">
-          <div className="status-indicator-row">
-            <span className="status-dot" />
-            <span className="status-title">NSE / BSE Market Feed</span>
+            <div className="text-[11px] text-slate-400">Unified Institutional Desk</div>
           </div>
-          {fyersStatus?.connected ? (
-            <div className="broker-connected-pill">
-              <span className="broker-dot connected" />
-              <span>Fyers Connected ({fyersStatus.fy_id})</span>
-            </div>
-          ) : (
-            <a href={loginUrl()} className="broker-connect-pill">
-              <span>+ Connect Fyers Broker</span>
-            </a>
-          )}
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         </div>
 
-        {/* Navigation Sections & Links */}
-        <div className="sidebar-scrollable-nav" ref={navRef}>
-          {navSections.map((section, sIdx) => (
-            <div key={sIdx} className="sidebar-nav-group">
-              <div className="sidebar-section-title">{section.title}</div>
-              <ul className="sidebar-nav-list">
-                {section.items.map((item, iIdx) => {
-                  const isActive = isCurrent(item.href, pathname, search);
-                  return (
-                    <li key={iIdx}>
-                      <Link
-                        href={item.href}
-                        className={`sidebar-nav-item ${isActive ? "active" : ""}`}
-                        onClick={() => {
-                          setMobileOpen(false);
-                          setSearch(item.href.includes("?") ? `?${item.href.split("?")[1]}` : "");
-                        }}
-                      >
-                        <item.icon className="sidebar-item-icon" size={16} strokeWidth={1.5} aria-hidden />
-                        <span className="sidebar-item-label">{item.label}</span>
-                        {item.badge && (
-                          <span
-                            className="sidebar-item-badge"
-                            style={{
-                              borderColor: item.badgeTone,
-                              color: item.badgeTone,
-                            }}
-                          >
-                            {item.badge}
-                          </span>
-                        )}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+        {/* Navigation Modules */}
+        <div className="space-y-4 px-2">
+          {/* Module 1: PORTFOLIO INTELLIGENCE */}
+          <div>
+            <div className="px-3 py-1 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+              Portfolio Intelligence
             </div>
-          ))}
-        </div>
+            <nav className="mt-1 space-y-0.5 text-xs">
+              <Link
+                href="/"
+                onClick={() => handleNav("/")}
+                className={`flex items-center justify-between px-3 py-2 rounded-r-md transition-colors ${
+                  isActive("/")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <LayoutDashboard size={16} />
+                  <span>Master Console</span>
+                </div>
+                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold">
+                  Live
+                </span>
+              </Link>
 
-        {/* Bottom Utility Profile / Actions */}
-        <div className="sidebar-footer">
-          <div className="sidebar-footer-card">
-            <div className="sidebar-footer-title">Institutional Quant Suite</div>
-            <div className="sidebar-footer-sub">v2.4 · 100% Stateless & Private</div>
+              <Link
+                href="/portfolio"
+                onClick={() => handleNav("/portfolio")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <TrendingUp size={16} />
+                  <span>Wealth Cone & VaR</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/portfolio?tab=rebalance"
+                onClick={() => handleNav("/portfolio?tab=rebalance")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio?tab=rebalance")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Scale size={16} />
+                  <span>Tax Rebalance</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  0% Tax
+                </span>
+              </Link>
+
+              <Link
+                href="/portfolio?tab=catalysts"
+                onClick={() => handleNav("/portfolio?tab=catalysts")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio?tab=catalysts")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Newspaper size={16} />
+                  <span>Catalysts & News</span>
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Module 2: RESEARCH & DISCOVERY */}
+          <div>
+            <div className="px-3 py-1 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+              Research & Discovery
+            </div>
+            <nav className="mt-1 space-y-0.5 text-xs">
+              <Link
+                href="/screener"
+                onClick={() => handleNav("/screener")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/screener")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Filter size={16} />
+                  <span>NSE Screener</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                  500 EQ
+                </span>
+              </Link>
+
+              <Link
+                href="/analyse/RELIANCE"
+                onClick={() => handleNav("/analyse/RELIANCE")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  pathname.startsWith("/analyse")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <BarChart2 size={16} />
+                  <span>Equity Deep Dive</span>
+                </div>
+                <span className="text-[9px] font-mono text-slate-400">Piotroski</span>
+              </Link>
+
+              <Link
+                href="/recommendations"
+                onClick={() => handleNav("/recommendations")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/recommendations")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Award size={16} />
+                  <span>Ranked Alpha Board</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                  Ranked
+                </span>
+              </Link>
+
+              <Link
+                href="/pulse"
+                onClick={() => handleNav("/pulse")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/pulse")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Radio size={16} />
+                  <span>Market Pulse</span>
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Module 3: QUANT & DERIVATIVES */}
+          <div>
+            <div className="px-3 py-1 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+              Quant & Derivatives
+            </div>
+            <nav className="mt-1 space-y-0.5 text-xs">
+              <Link
+                href="/options"
+                onClick={() => handleNav("/options")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/options")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Layers size={16} />
+                  <span>Options Chain & OI</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Fyers
+                </span>
+              </Link>
+
+              <Link
+                href="/options?tab=sizer"
+                onClick={() => handleNav("/options?tab=sizer")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/options?tab=sizer")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Shield size={16} />
+                  <span>Tail Risk Sizer</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/quant"
+                onClick={() => handleNav("/quant")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/quant")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <GitFork size={16} />
+                  <span>Risk Parity (HRP)</span>
+                </div>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Module 4: LAB & AGENT TOOLS */}
+          <div>
+            <div className="px-3 py-1 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
+              Lab & Agent Tools
+            </div>
+            <nav className="mt-1 space-y-0.5 text-xs">
+              <Link
+                href="/lab"
+                onClick={() => handleNav("/lab")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/lab")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <FlaskConical size={16} />
+                  <span>Strategy Lab (v2)</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-blue-50 text-blue-700 border border-blue-200">
+                  Walk-fwd
+                </span>
+              </Link>
+
+              <Link
+                href="/paper"
+                onClick={() => handleNav("/paper")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/paper")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <FileText size={16} />
+                  <span>Paper Trading</span>
+                </div>
+                <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                  Sim
+                </span>
+              </Link>
+            </nav>
           </div>
         </div>
-      </aside>
-    </>
+      </div>
+
+      {/* Footer Broker Connection Status */}
+      <div className="p-3 border-t border-slate-200 bg-slate-50 text-xs">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-[11px] font-medium text-slate-600">Fyers API Status</span>
+          <span className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-700 font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Connected
+          </span>
+        </div>
+        <div className="text-[10px] text-slate-400 font-mono truncate">
+          Token: FYERS-NSE-PRO-8491 (Exp 18h)
+        </div>
+      </div>
+    </aside>
   );
 }

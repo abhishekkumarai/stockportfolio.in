@@ -111,57 +111,40 @@ export default function HealthRadar({
         : "var(--text-secondary)";
 
   return (
-    <div className="glass-panel" style={{ marginBottom: 24 }}>
+    <div className="glass-panel" style={{ marginBottom: 24, padding: "24px 26px" }}>
       {/* Header Tabs */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color)", paddingBottom: 14, marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-subtle)", paddingBottom: 16, marginBottom: 22, flexWrap: "wrap", gap: 14 }}>
         <div>
           <h2 style={{ margin: 0, fontSize: "1.3rem" }}>Portfolio Intelligence Radar</h2>
           <p style={{ color: "var(--text-secondary)", margin: "4px 0 0", fontSize: "0.85rem" }}>
             Real-time capital preservation and growth trajectory diagnostics.
           </p>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            className={activeTab === "overview" ? "glowing-button" : "secondary-button"}
-            onClick={() => setActiveTab("overview")}
-            style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-          >
-            Health Overview
-          </button>
-          <button
-            className={activeTab === "stress" ? "glowing-button" : "secondary-button"}
-            onClick={() => setActiveTab("stress")}
-            style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-          >
-            Crash Simulator
-          </button>
-          <button
-            className={activeTab === "rebalance" ? "glowing-button" : "secondary-button"}
-            onClick={() => {
-              setActiveTab("rebalance");
-              if (!rebalancePlan) fetchRebalance();
-            }}
-            style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-          >
-            Tax Rebalancer
-          </button>
-          <button
-            className={activeTab === "news" ? "glowing-button" : "secondary-button"}
-            onClick={() => {
-              setActiveTab("news");
-              if (newsArticles.length === 0) fetchNews();
-            }}
-            style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-          >
-            Holdings News
-          </button>
-          <button
-            className={activeTab === "memo" ? "glowing-button" : "secondary-button"}
-            onClick={() => setActiveTab("memo")}
-            style={{ padding: "6px 14px", fontSize: "0.85rem" }}
-          >
-            AI Memo
-          </button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {TABS.map((tabKey) => {
+            const labels: Record<Tab, string> = {
+              overview: "Health Overview",
+              stress: "Crash Simulator",
+              rebalance: "Tax Rebalancer",
+              news: "Holdings News",
+              memo: "AI Memo",
+            };
+            const isActive = activeTab === tabKey;
+            return (
+              <button
+                key={tabKey}
+                className={isActive ? "glowing-button" : "secondary-button"}
+                onClick={() => {
+                  setActiveTab(tabKey);
+                  if (tabKey === "rebalance" && !rebalancePlan) fetchRebalance();
+                  if (tabKey === "news" && newsArticles.length === 0) fetchNews();
+                }}
+                style={{ padding: "6px 14px", fontSize: "0.84rem" }}
+              >
+                {labels[tabKey]}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -309,7 +292,15 @@ export default function HealthRadar({
               <select
                 value={rebalanceMode}
                 onChange={(e) => setRebalanceMode(e.target.value)}
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-color)", color: "#fff", padding: "6px 10px", borderRadius: 6 }}
+                style={{
+                  background: "var(--bg-secondary)",
+                  border: "1px solid var(--border-subtle)",
+                  color: "var(--text-primary)",
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  fontSize: "0.86rem",
+                  outline: "none",
+                }}
               >
                 <option value="zero_tax_inflow">Zero-Tax Cash Inflow Mode</option>
                 <option value="drift_rebalance">Full Drift Trimming Mode</option>
@@ -320,7 +311,16 @@ export default function HealthRadar({
                   placeholder="Cash Inflow (INR)"
                   value={cashInflow}
                   onChange={(e) => setCashInflow(Number(e.target.value))}
-                  style={{ width: 130, background: "rgba(255,255,255,0.06)", border: "1px solid var(--border-color)", color: "#fff", padding: "6px 10px", borderRadius: 6 }}
+                  style={{
+                    width: 140,
+                    background: "var(--bg-secondary)",
+                    border: "1px solid var(--border-subtle)",
+                    color: "var(--text-primary)",
+                    padding: "7px 12px",
+                    borderRadius: 6,
+                    fontSize: "0.86rem",
+                    outline: "none",
+                  }}
                 />
               )}
               <button className="glowing-button" onClick={fetchRebalance} disabled={rebalanceLoading}>
@@ -332,7 +332,19 @@ export default function HealthRadar({
           {rebalancePlan && (
             <div>
               {rebalancePlan.notes.map((note, idx) => (
-                <div key={idx} className="glass-panel" style={{ marginBottom: 12, fontSize: "0.85rem", color: "var(--accent-cyan)" }}>
+                <div
+                  key={idx}
+                  className="glass-panel"
+                  style={{
+                    marginBottom: 12,
+                    padding: "12px 16px",
+                    fontSize: "0.85rem",
+                    color: "#1e40af",
+                    background: "#eff6ff",
+                    borderColor: "#bfdbfe",
+                    borderRadius: 6,
+                  }}
+                >
                   {note}
                 </div>
               ))}
@@ -407,23 +419,23 @@ export default function HealthRadar({
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {newsArticles.map((art, idx) => (
-                <div key={idx} className="glass-panel" style={{ padding: "12px 16px" }}>
+                <div key={idx} className="glass-panel" style={{ padding: "14px 18px" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "2px 6px", borderRadius: 4, background: "rgba(255,255,255,0.08)" }}>
+                      <span style={{ fontSize: "0.75rem", fontWeight: 700, padding: "2px 8px", borderRadius: 4, background: "#f1f5f9", color: "#0f172a", border: "1px solid var(--border-subtle)", fontFamily: "var(--font-mono)" }}>
                         {art.symbol}
                       </span>
-                      <span style={{ fontSize: "0.75rem", color: "var(--accent-cyan)", border: "1px solid var(--border-color)", padding: "1px 6px", borderRadius: 4 }}>
+                      <span style={{ fontSize: "0.75rem", color: "#2563eb", background: "#eff6ff", border: "1px solid #bfdbfe", padding: "1px 6px", borderRadius: 4, fontWeight: 500 }}>
                         {art.tag}
                       </span>
                     </div>
-                    <span style={{ fontSize: "0.8rem", fontWeight: 600 }}>{art.impact_label}</span>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>{art.impact_label}</span>
                   </div>
                   <a
                     href={art.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    style={{ color: "var(--text-primary)", fontWeight: 500, fontSize: "0.92rem", textDecoration: "none" }}
+                    style={{ color: "var(--text-primary)", fontWeight: 600, fontSize: "0.92rem", textDecoration: "none" }}
                   >
                     {art.title} ↗
                   </a>

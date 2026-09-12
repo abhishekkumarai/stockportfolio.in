@@ -25,7 +25,7 @@ export default function AddHoldingForm({
   const [tab, setTab] = useState<"stock" | "fund" | "cash">("stock");
 
   return (
-    <div className="glass-panel" style={{ marginBottom: 24 }}>
+    <div className="glass-panel" style={{ marginBottom: 24, padding: "22px 24px" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {(["stock", "fund", "cash"] as const).map((option) => (
           <button
@@ -34,12 +34,14 @@ export default function AddHoldingForm({
             style={{
               padding: "6px 16px",
               borderRadius: 999,
-              border: `1px solid ${tab === option ? "var(--accent-cyan)" : "var(--border-subtle)"}`,
-              background: tab === option ? "var(--accent-cyan-glow)" : "transparent",
-              color: tab === option ? "var(--accent-cyan)" : "var(--text-secondary)",
+              border: `1px solid ${tab === option ? "#2563eb" : "var(--border-subtle)"}`,
+              background: tab === option ? "#eff6ff" : "#ffffff",
+              color: tab === option ? "#2563eb" : "var(--text-secondary)",
+              fontWeight: tab === option ? 600 : 500,
               cursor: "pointer",
               transition: "var(--transition-smooth)",
               textTransform: "capitalize",
+              fontSize: "0.85rem",
             }}
           >
             {option === "cash" ? "Cash" : `Add ${option}`}

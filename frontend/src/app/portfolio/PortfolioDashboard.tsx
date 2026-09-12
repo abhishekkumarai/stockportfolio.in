@@ -207,14 +207,14 @@ export default function PortfolioDashboard() {
       )}
 
       {error && (
-        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 20 }}>
+        <div className="glass-panel" style={{ borderColor: "var(--color-sell)", marginBottom: 20, padding: "16px 20px" }}>
           <strong style={{ color: "var(--color-sell)" }}>Something went wrong</strong>
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>{error}</p>
         </div>
       )}
 
       {notice && (
-        <div className="glass-panel glass-panel-cyan" style={{ marginBottom: 20 }}>
+        <div className="glass-panel glass-panel-cyan" style={{ marginBottom: 20, padding: "16px 20px" }}>
           <p style={{ margin: 0, color: "var(--text-secondary)" }}>{notice}</p>
         </div>
       )}
@@ -286,7 +286,7 @@ export default function PortfolioDashboard() {
       {valuation && <AllocationBars allocation={valuation.allocation} />}
 
       {valuation && valuation.warnings.length > 0 && (
-        <details className="glass-panel" style={{ marginTop: 24 }}>
+        <details className="glass-panel" style={{ marginTop: 24, padding: "14px 18px" }}>
           <summary style={{ cursor: "pointer", color: "var(--text-secondary)" }}>
             {valuation.warnings.length} data note{valuation.warnings.length === 1 ? "" : "s"}
           </summary>
