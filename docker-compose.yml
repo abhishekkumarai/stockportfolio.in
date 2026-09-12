@@ -14,8 +14,8 @@ name: stockportfolio
 # migrate cannot drift apart.
 x-backend-env: &backend-env
   ENV: development
-  DISABLE_AUTH: "true"
-  AUTH_DISABLED: "true"
+  DISABLE_AUTH: "false"
+  AUTH_DISABLED: "false"
   PORT: 8001
   DATABASE_URL: postgresql://postgres:postgres@db:5432/stockportfolio
   REDIS_URL: redis://redis:6379/0
@@ -151,10 +151,10 @@ services:
         # container that renders pages and fetches nothing - the exact failure
         # the production deploy hit in July.
         NEXT_PUBLIC_API_URL: http://localhost:8001
-        NEXT_PUBLIC_DISABLE_AUTH: "true"
+        NEXT_PUBLIC_DISABLE_AUTH: "false"
     environment:
-      DISABLE_AUTH: "true"
-      NEXT_PUBLIC_DISABLE_AUTH: "true"
+      DISABLE_AUTH: "false"
+      NEXT_PUBLIC_DISABLE_AUTH: "false"
     ports:
       - "${FRONTEND_PORT:-3003}:3000"
     depends_on:

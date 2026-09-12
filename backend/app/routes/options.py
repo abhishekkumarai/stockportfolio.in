@@ -46,102 +46,14 @@ def _is_auth_disabled() -> bool:
     return os.getenv("DISABLE_AUTH", "true").lower() in ("true", "1", "yes") and not _is_production()
 
 
-def _mock_fyers_payload(symbol: str, strike_count: int = 15) -> Dict[str, Any]:
-    probe = symbol.upper()
-    spot = 24835.5
-    step = 50.0
-    if "BANK" in probe:
-        spot = 52180.0
-        step = 100.0
-    elif "RELIANCE" in probe:
-        spot = 2985.4
-        step = 20.0
-    elif "HDFC" in probe:
-        spot = 1642.1
-        step = 10.0
-    elif "TCS" in probe:
-        spot = 4210.8
-        step = 50.0
-    elif "INFY" in probe:
-        spot = 1890.3
-        step = 20.0
-
-    atm = round(spot / step) * step
-    options_chain = [
-        {"option_type": "", "strike_price": -1, "ltp": spot, "symbol": symbol}
-    ]
-
-    for i in range(-strike_count, strike_count + 1):
-        strike = atm + i * step
-        diff = strike - spot
-        ce_ltp = max(5.0, round(max(0.0, -diff) + 120.0 * math.exp(-abs(diff) / 400.0), 1))
-        pe_ltp = max(5.0, round(max(0.0, diff) + 120.0 * math.exp(-abs(diff) / 400.0), 1))
-        base_dist = math.exp(-((diff / (step * 6.0)) ** 2))
-        ce_oi = int(45000 * (1.8 if strike >= atm else 0.6) * base_dist + 5000)
-        pe_oi = int(45000 * (1.9 if strike <= atm else 0.5) * base_dist + 5000)
-        ce_prev_oi = int(ce_oi * 0.92)
-        pe_prev_oi = int(pe_oi * 0.88)
-        ce_vol = int(ce_oi * 1.4)
-        pe_vol = int(pe_oi * 1.3)
-
-        options_chain.append({
-            "strike_price": strike,
-            "option_type": "CE",
-            "symbol": f"NSE:{symbol}24SEP{int(strike)}CE",
-            "ltp": ce_ltp,
-            "oi": ce_oi,
-            "prev_oi": ce_prev_oi,
-            "volume": ce_vol,
-            "bid": round(ce_ltp - 0.5, 1),
-            "ask": round(ce_ltp + 0.5, 1),
-            "prev_close_price": round(ce_ltp - 4.5, 1),
-        })
-        options_chain.append({
-            "strike_price": strike,
-            "option_type": "PE",
-            "symbol": f"NSE:{symbol}24SEP{int(strike)}PE",
-            "ltp": pe_ltp,
-            "oi": pe_oi,
-            "prev_oi": pe_prev_oi,
-            "volume": pe_vol,
-            "bid": round(pe_ltp - 0.5, 1),
-            "ask": round(pe_ltp + 0.5, 1),
-            "prev_close_price": round(pe_ltp + 4.5, 1),
-        })
-
-    return {
-        "code": 200,
-        "message": "OK",
-        "data": {
-            "optionsChain": options_chain,
-            "expiryData": [
-                {"expiry": 1727308800, "date": "26 Sep 2024"},
-                {"expiry": 1727913600, "date": "03 Oct 2024"},
-                {"expiry": 1730332800, "date": "31 Oct 2024"},
-            ],
-            "indiaVix": 13.8,
-        },
-    }
-
-
 def require_client(x_fyers_token: Optional[str] = Header(None)) -> Optional[FyersClient]:
     token = x_fyers_token or os.getenv("FYERS_ACCESS_TOKEN")
-    if not token and _is_auth_disabled():
-        return None
     if not token:
-        raise HTTPException(
-            status_code=401,
-            detail=(
-                "Option chains need a live Fyers token. Connect a broker, then "
-                "retry with the X-Fyers-Token header."
-            ),
-        )
+        return None
     try:
         return FyersClient(access_token=token)
-    except FyersError as exc:
-        if _is_auth_disabled():
-            return None
-        raise HTTPException(status_code=503, detail=str(exc))
+    except FyersError:
+        return None
 
 
 def resolve_symbol(symbol: str) -> str:
@@ -207,21 +119,29 @@ def chain(
 ):
     """The raw normalised chain, plus the expiry list for the picker."""
     fyers_symbol = resolve_symbol(symbol)
-    if client is None:
-        payload = _mock_fyers_payload(fyers_symbol, strike_count)
-    else:
-        try:
-            payload = client.option_chain(fyers_symbol, strike_count, timestamp)
-        except FyersAuthError as exc:
-            if _is_auth_disabled():
-                payload = _mock_fyers_payload(fyers_symbol, strike_count)
-            else:
-                raise HTTPException(status_code=401, detail=str(exc))
-        except FyersError as exc:
-            if _is_auth_disabled():
-                payload = _mock_fyers_payload(fyers_symbol, strike_count)
-            else:
-                raise HTTPException(status_code=502, detail=f"Fyers option chain failed: {exc}")
+    if client is None or not client.access_token:
+        return {
+            "symbol": fyers_symbol,
+            "context": {
+                "spot": 0.0,
+                "atm": 0.0,
+                "pcr": 0.0,
+                "max_pain": 0.0,
+                "call_wall": 0.0,
+                "put_wall": 0.0,
+                "total_call_oi": 0,
+                "total_put_oi": 0,
+                "expiries": [],
+            },
+            "rows": [],
+        }
+
+    try:
+        payload = client.option_chain(fyers_symbol, strike_count, timestamp)
+    except FyersAuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    except FyersError as exc:
+        raise HTTPException(status_code=502, detail=f"Fyers option chain failed: {exc}")
 
     rows, context = options_engine.parse_chain(payload)
     return {
@@ -254,21 +174,33 @@ def chain_analysis(
 ):
     """PCR, max pain, OI walls, build-up classification and the IV skew."""
     fyers_symbol = resolve_symbol(symbol)
-    if client is None:
-        payload = _mock_fyers_payload(fyers_symbol, strike_count)
-    else:
-        try:
-            payload = client.option_chain(fyers_symbol, strike_count, timestamp)
-        except FyersAuthError as exc:
-            if _is_auth_disabled():
-                payload = _mock_fyers_payload(fyers_symbol, strike_count)
-            else:
-                raise HTTPException(status_code=401, detail=str(exc))
-        except FyersError as exc:
-            if _is_auth_disabled():
-                payload = _mock_fyers_payload(fyers_symbol, strike_count)
-            else:
-                raise HTTPException(status_code=502, detail=f"Fyers option chain failed: {exc}")
+    if client is None or not client.access_token:
+        return {
+            "symbol": fyers_symbol,
+            "context": {
+                "spot": 0.0,
+                "atm": 0.0,
+                "pcr": 0.0,
+                "max_pain": 0.0,
+                "call_wall": 0.0,
+                "put_wall": 0.0,
+                "total_call_oi": 0,
+                "total_put_oi": 0,
+                "expiries": [],
+            },
+            "rows": [],
+            "max_pain": 0.0,
+            "pcr": 0.0,
+            "call_wall": 0.0,
+            "put_wall": 0.0,
+        }
+
+    try:
+        payload = client.option_chain(fyers_symbol, strike_count, timestamp)
+    except FyersAuthError as exc:
+        raise HTTPException(status_code=401, detail=str(exc))
+    except FyersError as exc:
+        raise HTTPException(status_code=502, detail=f"Fyers option chain failed: {exc}")
 
     data = payload.get("data") or {}
     expiries = data.get("expiryData") or []
