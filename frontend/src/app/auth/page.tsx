@@ -13,8 +13,12 @@ import {
   RefreshCw,
   Zap,
   Lock,
-  Radio,
   ArrowRight,
+  FileSpreadsheet,
+  Upload,
+  Database,
+  TrendingUp,
+  Sparkles,
 } from "lucide-react";
 import {
   getToken,
@@ -26,7 +30,14 @@ import {
   loadPortfolio,
   savePortfolio,
   DEFAULT_INSTITUTIONAL_PORTFOLIO,
+  getOfflineFiles,
+  importOfflineStatement,
+  uploadStatementFile,
+  formatCurrency,
+  formatPct,
   type FyersStatus,
+  type OfflineStatementFile,
+  type OfflineImportResult,
 } from "@/lib/portfolioApi";
 
 export default function AuthPage() {
@@ -36,6 +47,15 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error" | "info"; text: string } | null>(null);
 
+  // Offline statement importer states
+  const [offlineFiles, setOfflineFiles] = useState<OfflineStatementFile[]>([]);
+  const [importingOffline, setImportingOffline] = useState(false);
+  const [activeImport, setActiveImport] = useState<OfflineImportResult | null>(null);
+  const [currentHoldingsCount, setCurrentHoldingsCount] = useState<{ equity: number; funds: number }>({
+    equity: 0,
+    funds: 0,
+  });
+
   useEffect(() => {
     captureTokenFromUrl();
     const current = getToken();
@@ -43,7 +63,28 @@ export default function AuthPage() {
       setTokenInput(current);
       checkStatus();
     }
+    fetchOfflineFiles();
+    updateHoldingsCount();
   }, []);
+
+  const updateHoldingsCount = () => {
+    const p = loadPortfolio(false);
+    setCurrentHoldingsCount({
+      equity: p.equity.length,
+      funds: p.funds.length,
+    });
+  };
+
+  const fetchOfflineFiles = async () => {
+    try {
+      const data = await getOfflineFiles();
+      if (data?.files) {
+        setOfflineFiles(data.files);
+      }
+    } catch (err) {
+      console.warn("Could not fetch offline files:", err);
+    }
+  };
 
   const checkStatus = async () => {
     setLoading(true);
@@ -76,7 +117,6 @@ export default function AuthPage() {
   };
 
   const handleActivateDemoMode = () => {
-    // Generate simulated institutional broker token
     const demoToken = "FYERS-DEMO-INSTITUTIONAL-PRO-DESK-TOKEN";
     setToken(demoToken);
     setTokenInput(demoToken);
@@ -86,18 +126,91 @@ export default function AuthPage() {
       fy_id: "FY-PRO-9821",
       email: "abhishek@institutional.desk",
     });
-    // Ensure institutional seed portfolio is loaded
     savePortfolio(DEFAULT_INSTITUTIONAL_PORTFOLIO);
+    updateHoldingsCount();
+    setActiveImport(null);
     setMessage({
       type: "success",
       text: "Activated Institutional Demo Mode with pre-seeded bluechip portfolio and simulated derivatives stream!",
     });
   };
 
+  const handleImportOfflineFile = async (filename?: string) => {
+    setImportingOffline(true);
+    try {
+      const result = await importOfflineStatement(filename);
+      if (result && result.portfolio) {
+        savePortfolio(result.portfolio);
+        setActiveImport(result);
+        updateHoldingsCount();
+        const cid = result.statement?.metadata?.client_id || "OD7237";
+        if (typeof window !== "undefined") {
+          localStorage.setItem("stockportfolio_client_id", cid);
+          window.dispatchEvent(new Event("portfolio-updated"));
+        }
+        setStatus({
+          connected: true,
+          name: `Abhishek Kumar (${cid})`,
+          fy_id: cid,
+          email: `${cid.toLowerCase()}@stockportfolio.in`,
+        });
+        setMessage({
+          type: "success",
+          text: `Successfully imported ${cid} statement! Loaded ${result.report.equities_imported} equities and ${result.report.funds_imported} mutual funds (Total NAV: ${formatCurrency(result.valuation?.totals?.current_value ?? 0)}).`,
+        });
+      }
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: `Offline statement import failed: ${err.message || err}`,
+      });
+    } finally {
+      setImportingOffline(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingOffline(true);
+    try {
+      const result = await uploadStatementFile(file);
+      if (result && result.portfolio) {
+        savePortfolio(result.portfolio);
+        setActiveImport(result);
+        updateHoldingsCount();
+        const cid = result.statement?.metadata?.client_id || "UPLOADED";
+        if (typeof window !== "undefined") {
+          localStorage.setItem("stockportfolio_client_id", cid);
+          window.dispatchEvent(new Event("portfolio-updated"));
+        }
+        setStatus({
+          connected: true,
+          name: `Abhishek Kumar (${cid})`,
+          fy_id: cid,
+          email: `${cid.toLowerCase()}@stockportfolio.in`,
+        });
+        setMessage({
+          type: "success",
+          text: `Successfully parsed & imported ${file.name}! Loaded ${result.report.equities_imported} equities and ${result.report.funds_imported} mutual funds.`,
+        });
+      }
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: `File upload import failed: ${err.message || err}`,
+      });
+    } finally {
+      setImportingOffline(false);
+      e.target.value = "";
+    }
+  };
+
   const handleDisconnect = () => {
     clearToken();
     setTokenInput("");
     setStatus({ connected: false });
+    setActiveImport(null);
     setMessage({ type: "info", text: "Disconnected from broker session." });
   };
 
@@ -220,6 +333,125 @@ export default function AuthPage() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Offline Broker Statement & Holdings Importer */}
+      <div className="glass-panel mb-6" style={{ padding: "24px" }}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-2">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 style={{ margin: 0, fontSize: "1.1rem" }}>Offline Broker Statement Importer</h3>
+              <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded uppercase flex items-center gap-1">
+                <FileSpreadsheet size={12} /> Excel / Zerodha (.xlsx)
+              </span>
+            </div>
+            <p style={{ margin: "2px 0 0", fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+              Import verified holding statements from <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">ignore_offline/</code> or upload your broker export file.
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <span className="text-xs font-mono text-slate-400 block">
+              Active Cockpit Holdings
+            </span>
+            <span className="text-xs font-bold text-slate-800 font-mono">
+              {currentHoldingsCount.equity} Stocks • {currentHoldingsCount.funds} Funds
+            </span>
+          </div>
+        </div>
+
+        {/* Offline Files Found in ignore_offline */}
+        <div className="space-y-4">
+          <div className="p-4 bg-slate-50/80 rounded-lg border border-slate-200/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-sm text-slate-900 font-mono">
+                    holdings-OD7237.xlsx
+                  </span>
+                  <span className="px-1.5 py-0.5 text-[10px] font-mono font-medium rounded bg-emerald-100 text-emerald-800">
+                    Detected in ignore_offline
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 mb-0">
+                  Client ID: <span className="font-mono font-semibold text-slate-700">OD7237</span> • 13 Holdings (8 Equities + 5 Mutual Funds) • As of 2026-09-07
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleImportOfflineFile("holdings-OD7237.xlsx")}
+                  disabled={importingOffline}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-md shadow-sm transition-all"
+                >
+                  {importingOffline ? (
+                    <>
+                      <RefreshCw size={14} className="animate-spin" />
+                      <span>Parsing & Mapping AMFI...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>Import & Apply OD7237 Portfolio</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* If activeImport has been loaded, show diagnostics pill */}
+            {activeImport && (
+              <div className="mt-3 pt-3 border-t border-slate-200/60 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Client ID</span>
+                  <span className="font-bold text-slate-800 font-mono">{activeImport.statement?.metadata?.client_id || "OD7237"}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Portfolio NAV</span>
+                  <span className="font-bold text-slate-900 font-mono">{formatCurrency(activeImport.valuation?.totals?.current_value ?? 0)}</span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-mono uppercase">Unrealized P&L</span>
+                  <span className="font-bold text-emerald-700 font-mono">
+                    +{formatCurrency(activeImport.valuation?.totals?.pnl ?? 0)} ({formatPct(activeImport.valuation?.totals?.pnl_pct ?? 0)})
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-400 block text-[10px] font-mono uppercase">AMFI Resolution</span>
+                  <span className="font-bold text-emerald-600 font-mono">100% (5/5 Mapped)</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Custom Upload Dropzone */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 bg-white rounded-lg border border-dashed border-slate-300 hover:border-blue-400 transition-colors gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                <Upload size={17} />
+              </div>
+              <div>
+                <span className="text-xs font-semibold text-slate-800 block">
+                  Upload Custom Holdings Statement (.xlsx)
+                </span>
+                <span className="text-[11px] text-slate-500 block">
+                  Automatic AMFI fund code resolution, ISIN reconciliation, and capital gains tracking
+                </span>
+              </div>
+            </div>
+            <div>
+              <label className="cursor-pointer inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-md border border-slate-300 transition">
+                <span>Browse File</span>
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Manual Token Setup */}

@@ -20,7 +20,7 @@ import {
   Menu,
   X,
 } from "lucide-react";
-import { getFyersStatus, getToken, type FyersStatus } from "@/lib/portfolioApi";
+import { getFyersStatus, getToken, loadPortfolio, type FyersStatus } from "@/lib/portfolioApi";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -32,6 +32,7 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
   const pathname = usePathname();
   const [fyersStatus, setFyersStatus] = useState<FyersStatus | null>(null);
   const [search, setSearch] = useState("");
+  const [profileSubtitle, setProfileSubtitle] = useState("Institutional Desk");
 
   useEffect(() => {
     const sync = () => setSearch(window.location.search);
@@ -39,6 +40,31 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
     window.addEventListener("popstate", sync);
     return () => window.removeEventListener("popstate", sync);
   }, [pathname]);
+
+  useEffect(() => {
+    const updateProfile = () => {
+      try {
+        const p = loadPortfolio(false);
+        const total = (p.equity?.length || 0) + (p.funds?.length || 0);
+        const cid = typeof window !== "undefined" ? localStorage.getItem("stockportfolio_client_id") : null;
+        if (cid && total > 0) {
+          setProfileSubtitle(`${cid} • ${total} Holdings`);
+        } else if (fyersStatus?.fy_id) {
+          setProfileSubtitle(`${fyersStatus.fy_id}${total > 0 ? ` • ${total} Holdings` : ""}`);
+        } else if (total > 0) {
+          setProfileSubtitle(`OD7237 • ${total} Holdings`);
+        } else {
+          setProfileSubtitle("Institutional Desk");
+        }
+      } catch {
+        // fallback
+      }
+    };
+
+    updateProfile();
+    window.addEventListener("portfolio-updated", updateProfile);
+    return () => window.removeEventListener("portfolio-updated", updateProfile);
+  }, [fyersStatus, pathname]);
 
   useEffect(() => {
     if (!getToken()) return;
@@ -375,7 +401,7 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
               ></span>
             </div>
             <span className="text-[10px] text-slate-400 font-mono truncate">
-              {fyersStatus?.fy_id ? fyersStatus.fy_id : "Institutional Desk"}
+              {profileSubtitle}
             </span>
           </div>
         </Link>

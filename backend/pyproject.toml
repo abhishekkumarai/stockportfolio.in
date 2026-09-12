@@ -15,7 +15,6 @@ dependencies = [
     # scipy carries the optimiser (SLSQP), the hierarchical clustering behind HRP,
     # and the normal distribution used by VaR.
     "scipy>=1.14.0",
-
     # --- Phase 6: persistence and scheduling -----------------------------------
     # All optional at runtime: with DATABASE_URL unset the app never opens a
     # connection and every persistence-backed route answers 503 with a reason.
@@ -32,11 +31,12 @@ dependencies = [
     # Fernet, for encrypting stored broker tokens. Without it token storage is
     # refused outright rather than falling back to plaintext.
     "cryptography>=42.0.0",
-
     # --- Phase 11: AI layer ----------------------------------------------------
     # Optional: without ANTHROPIC_API_KEY every AI feature reports available:false
     # and the deterministic engines are untouched.
     "anthropic>=0.40.0",
+    "openpyxl>=3.1.5",
+    "python-multipart>=0.0.32",
 ]
 
 # Deliberately NOT included:

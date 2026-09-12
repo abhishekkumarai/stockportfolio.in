@@ -367,6 +367,100 @@ export async function getPortfolioNews(
 
 export const loginUrl = () => apiUrl("/api/fyers/login");
 
+// ---- offline statement importer -------------------------------------------
+
+export interface OfflineStatementFile {
+  name: string;
+  size_bytes: number;
+  modified_at: string;
+}
+
+export interface OfflineImportResult {
+  status: string;
+  file: string;
+  statement: {
+    metadata: {
+      client_id: string;
+      statement_title: string;
+      as_of_date: string | null;
+      file_name: string;
+      sheet_names: string[];
+    };
+    equity_summary?: {
+      invested_value: number;
+      present_value: number;
+      unrealized_pnl: number;
+      unrealized_pnl_pct: number;
+    };
+    mf_summary?: {
+      invested_value: number;
+      present_value: number;
+      unrealized_pnl: number;
+      unrealized_pnl_pct: number;
+    };
+    combined_summary?: {
+      invested_value: number;
+      present_value: number;
+      unrealized_pnl: number;
+      unrealized_pnl_pct: number;
+    };
+    equity_holdings: Array<{
+      symbol: string;
+      isin: string;
+      sector?: string | null;
+      quantity_available: number;
+      average_price: number;
+      previous_closing_price?: number | null;
+      unrealized_pnl?: number | null;
+      unrealized_pnl_pct?: number | null;
+    }>;
+    mf_holdings: Array<{
+      symbol: string;
+      isin: string;
+      instrument_type?: string | null;
+      quantity_available: number;
+      average_price: number;
+      previous_closing_price?: number | null;
+      unrealized_pnl?: number | null;
+      unrealized_pnl_pct?: number | null;
+    }>;
+  };
+  portfolio: StoredPortfolio;
+  report: {
+    client_id: string;
+    as_of_date: string | null;
+    equities_imported: number;
+    equities_parsed: number;
+    funds_imported: number;
+    funds_parsed: number;
+    unresolved_funds: any[];
+  };
+  valuation?: PortfolioValuation;
+}
+
+export async function getOfflineFiles(): Promise<{ files: OfflineStatementFile[]; count: number }> {
+  const response = await fetch(apiUrl("/api/portfolio/offline/files"));
+  return handle(response);
+}
+
+export async function importOfflineStatement(filename?: string): Promise<OfflineImportResult> {
+  const url = filename
+    ? apiUrl(`/api/portfolio/offline/import?filename=${encodeURIComponent(filename)}`)
+    : apiUrl("/api/portfolio/offline/import");
+  const response = await fetch(url, { method: "POST" });
+  return handle<OfflineImportResult>(response);
+}
+
+export async function uploadStatementFile(file: File): Promise<OfflineImportResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await fetch(apiUrl("/api/portfolio/upload-statement"), {
+    method: "POST",
+    body: formData,
+  });
+  return handle<OfflineImportResult>(response);
+}
+
 // ---- local persistence ----------------------------------------------------
 
 const STORAGE_KEY = "stockportfolio.holdings.v1";

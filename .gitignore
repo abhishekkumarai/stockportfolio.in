@@ -19,6 +19,7 @@ env/
 
 # Private / Local
 ignore_offline/
+frontend/public/imported_portfolio.json
 .claude/
 
 # OS & Temp
