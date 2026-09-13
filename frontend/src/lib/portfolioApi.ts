@@ -14,6 +14,7 @@ export interface FundHoldingInput {
   units: number;
   avg_nav: number;
   buy_date?: string | null;
+  scheme_name?: string | null;
 }
 
 export interface PricedRow {
@@ -176,6 +177,9 @@ export interface NewsArticle {
   impact: "BULLISH" | "BEARISH" | "NEUTRAL";
   impact_label: string;
   sentiment_score: number;
+  kind?: "equity" | "fund";
+  scheme_code?: number;
+  scheme_name?: string;
 }
 
 export interface NewsResponse {
@@ -348,12 +352,13 @@ export async function rebalancePortfolio(
 
 export async function getPortfolioNews(
   equity: EquityHoldingInput[],
+  funds: FundHoldingInput[] = [],
   signal?: AbortSignal
 ): Promise<NewsResponse> {
   const response = await fetch(apiUrl("/api/portfolio/news"), {
     method: "POST",
     headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify({ equity, funds: [], cash: 0 }),
+    body: JSON.stringify({ equity, funds, cash: 0 }),
     signal,
   });
   return handle<NewsResponse>(response);

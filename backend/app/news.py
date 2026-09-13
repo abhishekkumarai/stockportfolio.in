@@ -60,6 +60,10 @@ TAXONOMY_PATTERNS = {
         r"\bguidance\b",
         r"\byoy\b",
         r"\bqoq\b",
+        r"\baum\b",
+        r"\binflow(s|)\b",
+        r"\boutflow(s|)\b",
+        r"\bnav\b",
     ],
     "Order Wins & Expansion": [
         r"\border\b",
@@ -73,6 +77,9 @@ TAXONOMY_PATTERNS = {
         r"\bexpand(s|ed|ion)\b",
         r"\bcapacity\b",
         r"\bjoint\s+venture\b",
+        r"\bnfo\b",
+        r"\bnew\s+fund\b",
+        r"\blaunch(es|ed|ing|)\b",
     ],
     "Corporate Actions": [
         r"\bdividend\b",
@@ -81,6 +88,10 @@ TAXONOMY_PATTERNS = {
         r"\bbuyback\b",
         r"\brights\s+issue\b",
         r"\bagm\b",
+        r"\bidcw\b",
+        r"\bexpense\s+ratio\b",
+        r"\bter\b",
+        r"\bportfolio\s+disclosure(s|)\b",
     ],
     "Macro & Policy": [
         r"\brbi\b",
@@ -91,6 +102,8 @@ TAXONOMY_PATTERNS = {
         r"\bpli\b",
         r"\binflation\b",
         r"\bcrude\b",
+        r"\bbudget\b",
+        r"\btax(ation|es|)\b",
     ],
 }
 
@@ -103,6 +116,23 @@ def tag_headline(title: str) -> str:
             if re.search(pattern, title_lower):
                 return tag
     return "Market Update"
+
+
+def clean_fund_name(name: str) -> str:
+    """Strips plan/option noise (e.g. Direct Plan, Growth) for cleaner news queries."""
+    cleaned = re.sub(
+        r"(?i)\s*-\s*(Direct|Regular)(\s+(Plan|Growth|Option|IDCW|Dividend))*",
+        "",
+        name,
+    )
+    cleaned = re.sub(
+        r"(?i)\s*-\s*(Growth|IDCW|Dividend)(\s+(Plan|Option|Direct|Regular))*",
+        "",
+        cleaned,
+    )
+    cleaned = re.sub(r"(?i)\s*\((Direct|Regular|Growth|IDCW|Dividend).*\)", "", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    return cleaned
 
 
 def fetch_free_ticker_news(ticker: str, limit: int = 10) -> List[Dict[str, Any]]:
@@ -138,7 +168,6 @@ def fetch_free_ticker_news(ticker: str, limit: int = 10) -> List[Dict[str, Any]]
                 sent = _analyze_sentiment([clean_title])
                 compound = sent.get("compound", 0.0)
 
-
                 if compound >= 0.15:
                     impact = "BULLISH"
                     impact_label = "🟢 Bullish"
@@ -160,6 +189,7 @@ def fetch_free_ticker_news(ticker: str, limit: int = 10) -> List[Dict[str, Any]]
                         "impact": impact,
                         "impact_label": impact_label,
                         "sentiment_score": compound,
+                        "kind": "equity",
                     }
                 )
 
@@ -171,22 +201,120 @@ def fetch_free_ticker_news(ticker: str, limit: int = 10) -> List[Dict[str, Any]]
         return []
 
 
-def get_portfolio_news_digest(symbols: List[str], max_per_symbol: int = 3) -> List[Dict[str, Any]]:
-    """Aggregates and tags news catalysts for a list of portfolio symbols."""
+def fetch_free_fund_news(
+    scheme_code: int,
+    scheme_name: Optional[str] = None,
+    limit: int = 5,
+) -> List[Dict[str, Any]]:
+    """Fetches free mutual fund news from Google News RSS using curl_cffi."""
+    resolved_name = scheme_name
+    if not resolved_name or resolved_name.startswith("Scheme "):
+        try:
+            from app.mfapi_client import MFApiClient
+            client = MFApiClient()
+            meta = client.get_latest_nav(scheme_code).get("meta", {})
+            resolved_name = meta.get("scheme_name") or f"Scheme {scheme_code}"
+        except Exception as exc:
+            logger.warning("Failed to resolve MF scheme name for %s: %s", scheme_code, exc)
+            resolved_name = f"Scheme {scheme_code}"
+
+    search_term = clean_fund_name(resolved_name)
+    if not search_term or search_term.startswith("Scheme "):
+        return []
+
+    cache_key = make_key("news_fund", str(scheme_code))
+    cached = _NEWS_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
+
+    articles: List[Dict[str, Any]] = []
+    try:
+        from curl_cffi import requests
+        session = requests.Session(impersonate="chrome")
+        query = search_term if "fund" in search_term.lower() else f"{search_term} mutual fund"
+        url = f"https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
+        response = session.get(url, timeout=10)
+
+        if response.status_code == 200:
+            root = ET.fromstring(response.content)
+            for item in root.findall("./channel/item")[:limit]:
+                title = item.findtext("title", "")
+                link = item.findtext("link", "")
+                pub_date = item.findtext("pubDate", "")
+                source = item.findtext("source", "Google News")
+
+                clean_title = title.rsplit(" - ", 1)[0] if " - " in title else title
+                tag = tag_headline(clean_title)
+                sent = _analyze_sentiment([clean_title])
+                compound = sent.get("compound", 0.0)
+
+                if compound >= 0.15:
+                    impact = "BULLISH"
+                    impact_label = "🟢 Bullish"
+                elif compound <= -0.15 or tag in ("Governance & Legal", "Promoter & Insider"):
+                    impact = "BEARISH"
+                    impact_label = "🔴 Bearish"
+                else:
+                    impact = "NEUTRAL"
+                    impact_label = "⚪ Neutral"
+
+                articles.append(
+                    {
+                        "symbol": search_term,
+                        "title": clean_title,
+                        "url": link,
+                        "source": source,
+                        "published_at": pub_date,
+                        "tag": tag,
+                        "impact": impact,
+                        "impact_label": impact_label,
+                        "sentiment_score": compound,
+                        "kind": "fund",
+                        "scheme_code": scheme_code,
+                        "scheme_name": resolved_name,
+                    }
+                )
+
+        _NEWS_CACHE.set(cache_key, articles)
+        return articles
+
+    except Exception as exc:
+        logger.warning("Free MF news fetch failed for %s (%s): %s", scheme_code, search_term, exc)
+        return []
+
+
+def get_portfolio_news_digest(
+    symbols: List[str],
+    funds: Optional[List[Dict[str, Any]]] = None,
+    max_per_symbol: int = 3,
+) -> List[Dict[str, Any]]:
+    """Aggregates and tags news catalysts for portfolio equity symbols and mutual funds."""
     digest: List[Dict[str, Any]] = []
     for sym in symbols[:15]:  # Safety cap
         news = fetch_free_ticker_news(sym, limit=max_per_symbol)
         digest.extend(news)
 
+    for fund in (funds or [])[:10]:
+        scheme_code = fund.get("scheme_code")
+        if scheme_code:
+            fund_news = fetch_free_fund_news(
+                scheme_code=int(scheme_code),
+                scheme_name=fund.get("scheme_name"),
+                limit=max_per_symbol,
+            )
+            digest.extend(fund_news)
+
     # Sort high-impact (Governance, Promoter, Earnings) first
     def _rank(item: Dict[str, Any]) -> int:
-        if item["tag"] == "Governance & Legal":
+        tag = item.get("tag")
+        impact = item.get("impact")
+        if tag == "Governance & Legal":
             return 0
-        if item["tag"] == "Promoter & Insider":
+        if tag == "Promoter & Insider":
             return 1
-        if item["impact"] == "BEARISH":
+        if impact == "BEARISH":
             return 2
-        if item["impact"] == "BULLISH":
+        if impact == "BULLISH":
             return 3
         return 4
 

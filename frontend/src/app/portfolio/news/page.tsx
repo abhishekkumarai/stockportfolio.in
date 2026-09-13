@@ -4,7 +4,7 @@ import NewsView from "./NewsView";
 
 export const metadata: Metadata = {
   title: "Catalysts & News | stockportfolio.in",
-  description: "News and corporate filings filtered strictly for the stocks you hold.",
+  description: "News and corporate filings filtered strictly for the stocks and mutual funds you hold.",
 };
 
 export default function PortfolioNewsPage() {

@@ -108,10 +108,14 @@ def rebalance(
 
 @router.post("/news")
 def portfolio_news(request: PortfolioRequest):
-    """Pulls free, tagged news catalysts for the user's holdings."""
+    """Pulls free, tagged news catalysts for the user's holdings (equity and funds)."""
     try:
         symbols = [h.symbol for h in request.equity]
-        digest = get_portfolio_news_digest(symbols)
+        funds = [
+            {"scheme_code": f.scheme_code, "scheme_name": f.scheme_name}
+            for f in request.funds
+        ]
+        digest = get_portfolio_news_digest(symbols=symbols, funds=funds)
         return {"count": len(digest), "articles": digest}
     except Exception as exc:
         logger.exception("Portfolio news fetch failed")
