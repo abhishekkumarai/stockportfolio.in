@@ -181,7 +181,7 @@ export default function FundDetailPage({ params }: { params: Promise<{ schemeCod
         <div className="glass-panel" style={{ padding: "40px", textAlign: "center", maxWidth: "600px", margin: "0 auto" }}>
           <h3 style={{ color: "var(--color-sell)", marginBottom: "10px" }}>Could not load this fund</h3>
           <p style={{ color: "var(--text-secondary)", marginBottom: "24px" }}>{error}</p>
-          <Link href="/funds" className="glowing-button" style={{ textDecoration: "none" }}>
+          <Link href="/mutualfunds" className="glowing-button" style={{ textDecoration: "none" }}>
             ← Back to fund search
           </Link>
         </div>
@@ -208,7 +208,7 @@ export default function FundDetailPage({ params }: { params: Promise<{ schemeCod
   return (
     <div className="app-container animate-fade-in" style={{ paddingBottom: "60px" }}>
       <Link
-        href="/funds"
+        href="/mutualfunds"
         style={{ color: "var(--text-secondary)", fontSize: "0.9rem", textDecoration: "none", display: "inline-block", margin: "24px 0 16px" }}
       >
         ← Back to fund search

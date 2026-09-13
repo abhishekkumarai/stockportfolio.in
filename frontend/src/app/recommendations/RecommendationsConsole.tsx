@@ -178,7 +178,7 @@ export default function RecommendationsConsole() {
           <AlertTitle>No holdings in this browser</AlertTitle>
           <AlertDescription>
             The sell list is universe-wide until you add holdings — names to avoid, or to exit if
-            you own them. <Link href="/portfolio" className="underline">Add your portfolio</Link>{" "}
+            you own them. <Link href="/portfolio/holdings" className="underline">Add your portfolio</Link>{" "}
             for position-level exit calls with the tax on each.
           </AlertDescription>
         </Alert>

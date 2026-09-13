@@ -205,6 +205,13 @@ export default function QuantConsole() {
   const [regime, setRegime] = useState<RegimeResult | null>(FALLBACK_REGIME_RESULT);
   const [plan, setPlan] = useState<TargetRebalancePlan | null>(FALLBACK_TARGET_REBALANCE_PLAN);
 
+  // Whether each panel is currently showing the illustrative fallback dataset
+  // rather than a real computation — surfaced to the user instead of hidden.
+  const [resultIsSample, setResultIsSample] = useState(true);
+  const [factorsIsSample, setFactorsIsSample] = useState(true);
+  const [regimeIsSample, setRegimeIsSample] = useState(true);
+  const [planIsSample, setPlanIsSample] = useState(true);
+
   const [cashInflow, setCashInflow] = useState(0);
   const [allowSelling, setAllowSelling] = useState(true);
 
@@ -246,9 +253,11 @@ export default function QuantConsole() {
           includeFrontier: includeFrontier && (method === "min_variance" || method === "max_sharpe"),
         });
         setResult(res);
+        setResultIsSample(false);
       } catch (err) {
         console.warn("Optimise failed, using fallback model:", err);
         setResult(FALLBACK_OPTIMISE_RESULT);
+        setResultIsSample(true);
       }
     });
 
@@ -257,9 +266,11 @@ export default function QuantConsole() {
       try {
         const res = await factorExposures(portfolio, period, false);
         setFactors(res);
+        setFactorsIsSample(false);
       } catch (err) {
         console.warn("Factor exposure failed, using fallback:", err);
         setFactors(FALLBACK_FACTOR_RESULT);
+        setFactorsIsSample(true);
       }
     });
 
@@ -268,9 +279,11 @@ export default function QuantConsole() {
       try {
         const res = await marketRegime(equityCount >= 2 ? portfolio : null, period);
         setRegime(res);
+        setRegimeIsSample(false);
       } catch (err) {
         console.warn("Market regime failed, using fallback:", err);
         setRegime(FALLBACK_REGIME_RESULT);
+        setRegimeIsSample(true);
       }
     });
 
@@ -286,9 +299,11 @@ export default function QuantConsole() {
           period,
         });
         setPlan(res);
+        setPlanIsSample(false);
       } catch (err) {
         console.warn("Rebalance failed, using fallback:", err);
         setPlan(FALLBACK_TARGET_REBALANCE_PLAN);
+        setPlanIsSample(true);
       }
     });
 
@@ -324,7 +339,7 @@ export default function QuantConsole() {
           </p>
         </div>
         <div>
-          <a className="secondary-button" href="/auth" style={{ textDecoration: "none" }}>
+          <a className="secondary-button" href="/portfolio/holdings" style={{ textDecoration: "none" }}>
             📂 Import Statement (.xlsx)
           </a>
         </div>
@@ -339,7 +354,7 @@ export default function QuantConsole() {
                 At least 2 equity holdings are required to calculate the covariance matrix, risk parity, and factor attribution.
               </p>
             </div>
-            <a className="glowing-button text-xs" href="/auth" style={{ textDecoration: "none" }}>
+            <a className="glowing-button text-xs" href="/portfolio/holdings" style={{ textDecoration: "none" }}>
               📂 Import Broker Statement
             </a>
           </div>
@@ -415,6 +430,11 @@ export default function QuantConsole() {
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>{error}</p>
         </div>
       )}
+
+      {tab === "allocate" && resultIsSample && <SampleDataNotice />}
+      {tab === "factors" && factorsIsSample && <SampleDataNotice />}
+      {tab === "regime" && regimeIsSample && <SampleDataNotice />}
+      {tab === "orders" && planIsSample && <SampleDataNotice />}
 
       {tab === "allocate" && (
         <section>
@@ -909,6 +929,21 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
       </div>
       <div style={{ fontSize: "1.4rem", fontWeight: 600, marginTop: 6 }}>{value}</div>
       {sub && <div style={{ color: "var(--text-secondary)", fontSize: "0.8rem", marginTop: 2 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function SampleDataNotice() {
+  return (
+    <div
+      className="glass-panel"
+      style={{ borderColor: "var(--color-hold)", marginBottom: 16, padding: "10px 16px", fontSize: "0.8rem" }}
+    >
+      <strong style={{ color: "var(--color-hold)" }}>Sample data</strong>
+      <span style={{ color: "var(--text-secondary)" }}>
+        {" "}— this panel couldn&apos;t reach the backend and is showing an illustrative example instead of a real
+        computation on your portfolio.
+      </span>
     </div>
   );
 }

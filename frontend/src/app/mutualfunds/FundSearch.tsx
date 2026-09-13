@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { searchFunds, type SchemeSearchResult } from "@/lib/mfApi";
+import MyMutualFunds from "./MyMutualFunds";
 
 const POPULAR_FUNDS = [
   { code: 122639, name: "Parag Parikh Flexi Cap Fund", plan: "Direct · Growth", house: "PPFAS" },
@@ -43,7 +44,7 @@ export default function FundSearch() {
       if (!direct) params.set("direct", "false");
       if (!growth) params.set("growth", "false");
       const qs = params.toString();
-      router.replace(qs ? `/funds?${qs}` : "/funds", { scroll: false });
+      router.replace(qs ? `/mutualfunds?${qs}` : "/mutualfunds", { scroll: false });
     },
     [router]
   );
@@ -107,6 +108,8 @@ export default function FundSearch() {
         </p>
       </section>
 
+      <MyMutualFunds />
+
       <div
         className="glass-panel-cyan"
         style={{ padding: "32px", maxWidth: "860px", margin: "0 auto 40px" }}
@@ -115,7 +118,7 @@ export default function FundSearch() {
           Search Mutual Fund Schemes
         </h3>
 
-        <div className="search-input-wrapper">
+        <div style={{ position: "relative" }}>
           <span
             style={{
               position: "absolute",
@@ -123,18 +126,28 @@ export default function FundSearch() {
               top: "50%",
               transform: "translateY(-50%)",
               color: "var(--text-muted)",
-              fontSize: "1.2rem",
+              display: "flex",
+              pointerEvents: "none",
             }}
           >
             <Search size={15} strokeWidth={1.5} />
           </span>
           <input
             type="text"
-            className="search-input"
             placeholder="Search by fund or AMC name (e.g. Parag Parikh, HDFC, Nifty Index...)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             autoFocus
+            style={{
+              width: "100%",
+              padding: "12px 16px 12px 44px",
+              borderRadius: "10px",
+              border: "1px solid var(--border-subtle)",
+              background: "var(--bg-secondary)",
+              color: "var(--text-primary)",
+              fontSize: "0.95rem",
+              outline: "none",
+            }}
           />
         </div>
 
@@ -199,7 +212,7 @@ export default function FundSearch() {
               {results.map((scheme) => (
                 <Link
                   key={scheme.schemeCode}
-                  href={`/funds/${scheme.schemeCode}`}
+                  href={`/mutualfunds/${scheme.schemeCode}`}
                   className="glass-panel"
                   style={{
                     padding: "18px 22px",
@@ -259,7 +272,7 @@ export default function FundSearch() {
               {POPULAR_FUNDS.map((fund) => (
                 <Link
                   key={fund.code}
-                  href={`/funds/${fund.code}`}
+                  href={`/mutualfunds/${fund.code}`}
                   className="glass-panel"
                   style={{
                     padding: "22px",

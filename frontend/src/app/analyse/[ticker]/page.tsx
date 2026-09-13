@@ -240,12 +240,6 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
   if (recDecision.includes("buy")) decisionClass = "buy";
   if (recDecision.includes("sell")) decisionClass = "sell";
 
-  // Helper function to color news sentiment
-  const getSentimentClass = (headline: string) => {
-    // Basic local preview helper
-    return "neutral";
-  };
-
   return (
     <div className="app-container animate-fade-in">
       {/* Top Nav & Equity Switcher */}
@@ -299,7 +293,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
               NSE/BSE Listed
             </span>
           </div>
-          <p style={{ fontSize: "1.1rem", fontWeight: 500, color: "#fff" }}>{data.name}</p>
+          <p style={{ fontSize: "1.1rem", fontWeight: 500, color: "var(--text-secondary)" }}>{data.name}</p>
         </div>
 
         <div style={{ textAlign: "right" }}>
@@ -322,7 +316,29 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div className="title" style={{ fontSize: "0.85rem", color: "var(--text-secondary)", letterSpacing: "1px", textTransform: "uppercase" }}>stockportfolio.in Recommendation</div>
           <div>
-            <span className={`badge-recommendation ${decisionClass}`}>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "8px 20px",
+                borderRadius: "999px",
+                fontSize: "1.3rem",
+                fontWeight: 800,
+                letterSpacing: "0.5px",
+                textTransform: "uppercase",
+                color:
+                  decisionClass === "buy"
+                    ? "var(--color-buy)"
+                    : decisionClass === "sell"
+                    ? "var(--color-sell)"
+                    : "var(--color-hold)",
+                background:
+                  decisionClass === "buy"
+                    ? "var(--color-buy-bg)"
+                    : decisionClass === "sell"
+                    ? "var(--color-sell-bg)"
+                    : "var(--color-hold-bg)",
+              }}
+            >
               {data.recommendation.decision}
             </span>
           </div>
@@ -541,7 +557,7 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
             No recent news articles found for this ticker.
           </div>
         ) : (
-          <div className="news-feed">
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
             {data.news.map((item, idx) => {
               // Estimate sentiment of individual title locally (since API returns compound of whole,
               // we can estimate using VADER scores or simple keywords for visualization,
@@ -549,25 +565,50 @@ export default function AnalysePage({ params }: { params: Promise<{ ticker: stri
               const lowerTitle = item.title.toLowerCase();
               let sentType: "positive" | "negative" | "neutral" = "neutral";
               let color = "var(--text-muted)";
-              
+              let bg = "rgba(148, 163, 184, 0.12)";
+
               if (lowerTitle.includes("rise") || lowerTitle.includes("gain") || lowerTitle.includes("profit") || lowerTitle.includes("buy") || lowerTitle.includes("bullish") || lowerTitle.includes("upside") || lowerTitle.includes("partner") || lowerTitle.includes("surges")) {
                 sentType = "positive";
                 color = "var(--color-buy)";
+                bg = "var(--color-buy-bg)";
               } else if (lowerTitle.includes("fall") || lowerTitle.includes("crash") || lowerTitle.includes("drop") || lowerTitle.includes("sell") || lowerTitle.includes("bearish") || lowerTitle.includes("concern") || lowerTitle.includes("loss") || lowerTitle.includes("low")) {
                 sentType = "negative";
                 color = "var(--color-sell)";
+                bg = "var(--color-sell-bg)";
               }
-              
+
               return (
-                <div key={idx} className="glass-panel news-card" style={{ "--sentiment-color": color } as React.CSSProperties}>
-                  <div className="news-header">
-                    <span className="news-source">{item.source}</span>
-                    <span className="news-time">{item.time}</span>
+                <div
+                  key={idx}
+                  className="glass-panel"
+                  style={{ padding: "18px 22px", display: "flex", flexDirection: "column", gap: "8px" }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-secondary)" }}>
+                      {item.source}
+                    </span>
+                    <span style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>{item.time}</span>
                   </div>
-                  <a href={item.link} target="_blank" rel="noopener noreferrer" className="news-title">
-                    <h4>{item.title}</h4>
+                  <a
+                    href={item.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none", color: "var(--text-primary)" }}
+                  >
+                    <h4 style={{ fontSize: "1rem", fontWeight: 600, lineHeight: 1.4 }}>{item.title}</h4>
                   </a>
-                  <span className={`news-sentiment-badge ${sentType}`}>
+                  <span
+                    style={{
+                      alignSelf: "flex-start",
+                      padding: "2px 10px",
+                      borderRadius: "999px",
+                      fontSize: "0.7rem",
+                      fontWeight: 700,
+                      letterSpacing: "0.4px",
+                      color,
+                      background: bg,
+                    }}
+                  >
                     {sentType.toUpperCase()}
                   </span>
                 </div>

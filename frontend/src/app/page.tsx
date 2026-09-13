@@ -25,7 +25,6 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  ChevronLeft,
   SlidersHorizontal,
   Layers,
   Sparkles,
@@ -57,9 +56,9 @@ interface HoldingItem {
   totalValue: number;
   unrealizedPnL: number;
   unrealizedPnLPct: number;
-  varContrib: string;
-  piotroski: number;
-  piotroskiLabel: string;
+  varContrib: string | null;
+  piotroski: number | null;
+  piotroskiLabel: string | null;
   catalyst: string;
   status?: string;
   lockWarning?: string;
@@ -76,16 +75,12 @@ export default function ConsolidatedMasterWorkstation() {
 
   // Modals & Execution States
   const [isRebalanceModalOpen, setIsRebalanceModalOpen] = useState(false);
-  const [isExecutingBasket, setIsExecutingBasket] = useState(false);
-  const [basketExecuted, setBasketExecuted] = useState(false);
-  const [selectedForensicHolding, setSelectedForensicHolding] = useState<HoldingItem | null>(null);
 
   // Keyboard shortcut listener to dismiss modals on Escape
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setIsRebalanceModalOpen(false);
-        setSelectedForensicHolding(null);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
@@ -96,6 +91,7 @@ export default function ConsolidatedMasterWorkstation() {
   const [portfolio, setPortfolio] = useState<StoredPortfolio>({ equity: [], funds: [], cash: 0 });
   const [analysis, setAnalysis] = useState<FullAnalysisResponse | null>(null);
   const [isPortfolioLoading, setIsPortfolioLoading] = useState(true);
+  const [portfolioError, setPortfolioError] = useState<string | null>(null);
 
   const refreshPortfolio = async () => {
     try {
@@ -105,11 +101,16 @@ export default function ConsolidatedMasterWorkstation() {
         setIsPortfolioLoading(true);
         const res = await analysePortfolio(p.equity, p.funds, p.cash);
         setAnalysis(res);
+        setPortfolioError(null);
       } else {
         setAnalysis(null);
+        setPortfolioError(null);
       }
     } catch (err) {
       console.error("Failed to load or analyse portfolio:", err);
+      setPortfolioError(
+        err instanceof Error ? err.message : "Could not analyse your portfolio. Please try again."
+      );
     } finally {
       setIsPortfolioLoading(false);
     }
@@ -134,7 +135,7 @@ export default function ConsolidatedMasterWorkstation() {
   // Map dynamic portfolio data to HoldingItem structure
   const holdings: HoldingItem[] = useMemo(() => {
     if (analysis?.valuation?.holdings && analysis.valuation.holdings.length > 0) {
-      return analysis.valuation.holdings.map((h, idx) => {
+      return analysis.valuation.holdings.map((h) => {
         const pnl = h.pnl ?? (h.current_value !== null ? h.current_value - h.invested : 0);
         const pnlPct = h.pnl_pct ?? (h.invested > 0 ? (pnl / h.invested) * 100 : 0);
         const ltp = h.price ?? (h.quantity > 0 ? (h.current_value ?? h.invested) / h.quantity : h.avg_cost);
@@ -151,9 +152,9 @@ export default function ConsolidatedMasterWorkstation() {
           totalValue: totalVal,
           unrealizedPnL: pnl,
           unrealizedPnLPct: Number(pnlPct.toFixed(2)),
-          varContrib: `${Math.max(1, Math.round(weight * 1.1))}% VaR`,
-          piotroski: 7 + (idx % 3),
-          piotroskiLabel: idx % 2 === 0 ? "Strong" : "Pristine",
+          varContrib: null,
+          piotroski: null,
+          piotroskiLabel: null,
           catalyst:
             h.warnings && h.warnings.length > 0
               ? h.warnings[0]
@@ -182,9 +183,9 @@ export default function ConsolidatedMasterWorkstation() {
         totalValue: eq.quantity * eq.avg_cost,
         unrealizedPnL: 0,
         unrealizedPnLPct: 0,
-        varContrib: "10% VaR",
-        piotroski: 8,
-        piotroskiLabel: "Strong",
+        varContrib: null,
+        piotroski: null,
+        piotroskiLabel: null,
         catalyst: "Imported Holding",
       }));
       const mfItems: HoldingItem[] = portfolio.funds.map((mf) => ({
@@ -198,9 +199,9 @@ export default function ConsolidatedMasterWorkstation() {
         totalValue: mf.units * mf.avg_nav,
         unrealizedPnL: 0,
         unrealizedPnLPct: 0,
-        varContrib: "5% VaR",
-        piotroski: 8,
-        piotroskiLabel: "Pristine",
+        varContrib: null,
+        piotroski: null,
+        piotroskiLabel: null,
         catalyst: "SIP Direct Scheme",
       }));
       const combined = [...eqItems, ...mfItems];
@@ -246,9 +247,8 @@ export default function ConsolidatedMasterWorkstation() {
     return matchesSector && matchesSearch;
   });
 
-  // Table density & pagination states
+  // Table density state
   const [isCompactDensity, setIsCompactDensity] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
 
   // Top Alpha Picks (Decile 10) Dataset
   const alphaPicks = [
@@ -503,7 +503,7 @@ export default function ConsolidatedMasterWorkstation() {
     if (activeTableTab === "holdings") {
       csvContent += "Symbol,Name,Sector,Weight(%),Qty,Avg Buy,LTP,Total Value,Unrealized PnL,VaR,Piotroski,Catalyst\n";
       filteredHoldings.forEach((h) => {
-        csvContent += `"${h.symbol}","${h.name}","${h.sector}",${h.weight},${h.qty},${h.avgBuy},${h.ltp},${h.totalValue},${h.unrealizedPnL},"${h.varContrib}","${h.piotroski}/9","${h.catalyst}"\n`;
+        csvContent += `"${h.symbol}","${h.name}","${h.sector}",${h.weight},${h.qty},${h.avgBuy},${h.ltp},${h.totalValue},${h.unrealizedPnL},"${h.varContrib ?? "N/A"}","${h.piotroski != null ? `${h.piotroski}/9` : "N/A"}","${h.catalyst}"\n`;
       });
     } else if (activeTableTab === "alpha") {
       csvContent += "Symbol,Name,Sector,Decile,Expected Alpha,Momentum,Piotroski,PE,ROCE,Catalyst\n";
@@ -530,22 +530,22 @@ export default function ConsolidatedMasterWorkstation() {
     document.body.removeChild(link);
   };
 
-  // Handle rebalance execution
-  const handleExecuteBasket = () => {
-    setIsExecutingBasket(true);
-    setTimeout(() => {
-      setIsExecutingBasket(false);
-      setBasketExecuted(true);
-      setTimeout(() => {
-        setIsRebalanceModalOpen(false);
-        setBasketExecuted(false);
-      }, 1600);
-    }, 1400);
-  };
-
   return (
     <div className="w-full max-w-full overflow-x-hidden p-4 sm:p-6 space-y-6">
-      
+
+      {portfolioError && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-red-200 bg-red-50 text-red-800 text-xs">
+          <AlertTriangle size={15} className="shrink-0" />
+          <span>{portfolioError}</span>
+          <button
+            onClick={refreshPortfolio}
+            className="ml-auto font-semibold underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* 1. TOP TITLE BANNER & INSTITUTIONAL DISPATCH ACTIONS */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pb-6 border-b border-slate-200 mb-2">
         <div>
@@ -565,8 +565,9 @@ export default function ConsolidatedMasterWorkstation() {
         {/* Action Button Suite */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <button
-            onClick={() => router.push("/auth")}
+            onClick={() => router.push("/portfolio/holdings")}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-800 bg-white hover:bg-slate-50 rounded-md border border-slate-300 shadow-sm transition-all"
+            title="Connect your broker or import a statement on the Portfolio page"
           >
             <RefreshCw size={14} className="text-slate-500" />
             <span>Import / Sync Broker Holdings</span>
@@ -635,12 +636,12 @@ export default function ConsolidatedMasterWorkstation() {
               </span>
               <CheckCircle2 size={16} className="text-emerald-600" />
             </div>
-            <div className="text-2xl font-bold font-mono text-emerald-600 tracking-tight tabular-nums">
-              ₹0.00 Tax Drag
+            <div className="text-2xl font-bold font-mono text-slate-400 tracking-tight tabular-nums">
+              See Tax Rebalance
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="text-xs font-mono font-medium text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                {holdings.length > 0 ? "Zero-Tax Inflow Active" : "No Positions Active"}
+              <span className="text-xs font-mono font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                Computed on the Tax Rebalance page
               </span>
             </div>
           </div>
@@ -651,9 +652,9 @@ export default function ConsolidatedMasterWorkstation() {
                 {holdings.filter((h) => h.lockWarning).length} Locked
               </span>
             </div>
-            <div className="text-[10.5px] text-slate-500">
-              Rule Optimization: <strong className="text-emerald-600 font-bold">STCG 20% → LTCG 12.5%</strong>
-            </div>
+            <Link href="/portfolio/rebalance" className="text-[10.5px] text-blue-600 hover:underline">
+              Open tax-aware rebalance →
+            </Link>
           </div>
         </div>
 
@@ -666,24 +667,23 @@ export default function ConsolidatedMasterWorkstation() {
               </span>
               <Shield size={16} className="text-blue-600" />
             </div>
-            <div className="text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
-              {holdings.length > 0 ? "-6.4% Max DD" : "Hedge Inactive"}
+            <div className="text-2xl font-bold font-mono text-slate-400 tracking-tight tabular-nums">
+              See Tail Risk Sizer
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
-              <span className="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                {holdings.length > 0 ? "Collar Active (Zero Net Cost)" : "NAV Base ₹0.00"}
+              <span className="text-xs font-mono font-medium text-slate-500 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                Computed on the Options page
               </span>
             </div>
           </div>
           <div className="mt-3.5 pt-2.5 border-t border-slate-100 text-[11px] font-mono text-slate-500 space-y-1">
-            <div className="flex justify-between">
-              <span>Put Wall: <strong className="text-slate-800 font-semibold">24,500 PE</strong></span>
-              <span className="text-slate-400">1.85 Cr OI</span>
+            <div className="flex justify-between items-center">
+              <span>Portfolio NAV base:</span>
+              <span className="font-semibold text-slate-800">{formatCurrency(totalCurrentValue)}</span>
             </div>
-            <div className="flex justify-between items-center text-[10.5px]">
-              <span>Call Wall: 25,000 CE (1.42 Cr)</span>
-              <span className="text-emerald-600 font-semibold">Lots: {Math.max(0, Math.round(totalCurrentValue / 1250000))}</span>
-            </div>
+            <Link href="/options/tail-risk" className="text-[10.5px] text-blue-600 hover:underline">
+              Open tail risk sizer →
+            </Link>
           </div>
         </div>
 
@@ -692,18 +692,20 @@ export default function ConsolidatedMasterWorkstation() {
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <span className="text-[10.5px] font-mono font-semibold uppercase text-slate-500 tracking-wider">
-                ML Return Alpha & VaR
+                Portfolio Risk (VaR &amp; Beta)
               </span>
               <Activity size={16} className="text-blue-600" />
             </div>
-            <div className="text-2xl font-bold font-mono text-emerald-600 tracking-tight tabular-nums">
-              {holdings.length > 0 ? "+4.04% Alpha" : "0.00% Alpha"}
+            <div className="text-2xl font-bold font-mono text-slate-900 tracking-tight tabular-nums">
+              {analysis?.danger?.metrics?.monthly_var_95_pct
+                ? `${(analysis.danger.metrics.monthly_var_95_pct / 4).toFixed(2)}% VaR`
+                : "— VaR"}
             </div>
             <div className="mt-1.5 flex items-center gap-1.5">
               <span className="text-xs font-mono font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                 {analysis?.danger?.metrics?.portfolio_beta
-                  ? `Beta: ${analysis.danger.metrics.portfolio_beta.toFixed(2)} | Decile 10`
-                  : "Sharpe: 1.94 | Decile 10"}
+                  ? `Beta: ${analysis.danger.metrics.portfolio_beta.toFixed(2)} vs NIFTY`
+                  : "Add holdings for beta"}
               </span>
             </div>
           </div>
@@ -713,15 +715,12 @@ export default function ConsolidatedMasterWorkstation() {
               <span className="font-semibold text-slate-800">
                 {analysis?.danger?.metrics?.monthly_var_95_pct
                   ? `${(analysis.danger.metrics.monthly_var_95_pct / 4).toFixed(2)}% (${formatCurrency(totalCurrentValue * (analysis.danger.metrics.monthly_var_95_pct / 400))})`
-                  : totalCurrentValue > 0
-                  ? `1.48% (${formatCurrency(totalCurrentValue * 0.0148)})`
-                  : "0.00% (₹0)"}
+                  : "Not yet computed"}
               </span>
             </div>
-            <div className="flex justify-between items-center text-[10.5px]">
-              <span>Beta: {analysis?.danger?.metrics?.portfolio_beta?.toFixed(2) ?? "0.88"} vs NIFTY</span>
-              <span className="text-blue-700 font-semibold">IC: 0.084 (t: 4.12)</span>
-            </div>
+            <Link href="/recommendations" className="text-[10.5px] text-blue-600 hover:underline">
+              View ML alpha rankings →
+            </Link>
           </div>
         </div>
 
@@ -736,8 +735,16 @@ export default function ConsolidatedMasterWorkstation() {
             {/* Header Bar with View Tabs */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Multi-Model Visual Analytics Console</h2>
-                <p className="text-[11px] text-slate-500">10-Year Monte Carlo probabilistic compounding & walk-forward folds</p>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-slate-900">Multi-Model Visual Analytics Console</h2>
+                  <span
+                    className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200"
+                    title="This chart illustrates a fixed growth-rate assumption, not a Monte Carlo simulation run against your actual holdings"
+                  >
+                    Illustrative
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500">Illustrative 10-year compounding projection at an assumed CAGR — not a simulation of your actual holdings</p>
               </div>
 
               {/* Segmented Switcher */}
@@ -873,9 +880,11 @@ export default function ConsolidatedMasterWorkstation() {
             {/* TAB 2: Strategy Lab v2 Walk-Forward Metrics */}
             {activeVisualTab === "lab" && (
               <div className="mt-4 bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <span className="font-semibold text-slate-800">Walk-Forward Factor Stability Matrix (5 Folds)</span>
-                  <span className="text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 font-bold">In-Sample vs Out-of-Sample Ratio: 0.89</span>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                  <span className="font-semibold text-slate-800">Sample Walk-Forward Output</span>
+                  <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold">
+                    Illustrative — run your own in Strategy Lab
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-white p-2.5 rounded border border-slate-200">
@@ -907,9 +916,11 @@ export default function ConsolidatedMasterWorkstation() {
             {/* TAB 3: Derivatives Open Interest Payoff */}
             {activeVisualTab === "oi" && (
               <div className="mt-4 bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <span className="font-semibold text-slate-800">NIFTY ATM 24,850 OI Walls & Max Pain</span>
-                  <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200 font-bold">PCR: 1.18 (Bullish Bias)</span>
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200 gap-2">
+                  <span className="font-semibold text-slate-800">Sample OI Wall Layout</span>
+                  <span className="text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-bold">
+                    Illustrative — see live chain on Options
+                  </span>
                 </div>
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between p-2 bg-white rounded border border-slate-200">
@@ -927,19 +938,31 @@ export default function ConsolidatedMasterWorkstation() {
                 </div>
               </div>
             )}
-            {/* Mini Footer Metrics (Master Console Spec) */}
+            {/* Mini Footer Metrics */}
             <div className="mt-4 pt-3 border-t border-slate-200 grid grid-cols-3 gap-2 text-center text-xs font-mono">
               <div className="p-2 bg-slate-50 rounded border border-slate-200">
-                <span className="text-[10px] text-slate-400 block uppercase">Ann. Volatility</span>
-                <span className="text-xs font-bold text-slate-900">14.2%</span>
+                <span className="text-[10px] text-slate-400 block uppercase">Expected Volatility</span>
+                <span className="text-xs font-bold text-slate-900">
+                  {analysis?.growth?.pillars?.expected_volatility_pct != null
+                    ? `${analysis.growth.pillars.expected_volatility_pct.toFixed(1)}%`
+                    : "—"}
+                </span>
               </div>
               <div className="p-2 bg-slate-50 rounded border border-slate-200">
-                <span className="text-[10px] text-slate-400 block uppercase">Max Hist Drawdown</span>
-                <span className="text-xs font-bold text-red-600">-7.12%</span>
+                <span className="text-[10px] text-slate-400 block uppercase">Monthly CVaR (95%)</span>
+                <span className="text-xs font-bold text-red-600">
+                  {analysis?.danger?.metrics?.monthly_cvar_95_pct != null
+                    ? `${analysis.danger.metrics.monthly_cvar_95_pct.toFixed(2)}%`
+                    : "—"}
+                </span>
               </div>
               <div className="p-2 bg-slate-50 rounded border border-slate-200">
-                <span className="text-[10px] text-slate-400 block uppercase">Sortino Ratio</span>
-                <span className="text-xs font-bold text-emerald-600">2.78</span>
+                <span className="text-[10px] text-slate-400 block uppercase">Projected CAGR</span>
+                <span className="text-xs font-bold text-emerald-600">
+                  {analysis?.growth?.pillars?.projected_cagr_pct != null
+                    ? `${analysis.growth.pillars.projected_cagr_pct.toFixed(1)}%`
+                    : "—"}
+                </span>
               </div>
             </div>
           </div>
@@ -960,23 +983,23 @@ export default function ConsolidatedMasterWorkstation() {
                 <Zap size={16} className="text-blue-600" />
                 <h3 className="text-sm font-bold text-slate-900">Execution & Rebalance Dispatch</h3>
               </div>
-              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                0% Realized STCG
+              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                Preview
               </span>
             </div>
 
-            {/* Zero-Tax Fresh Capital Allocator */}
+            {/* Zero-Tax Fresh Capital Allocator — real computation lives on /portfolio/rebalance */}
             {holdings.length === 0 ? (
               <div className="mt-3.5 p-4 rounded-lg border border-slate-200 bg-slate-50 text-center space-y-2">
                 <div className="text-xs font-semibold text-slate-800">No Active Positions to Rebalance</div>
                 <p className="text-[11px] text-slate-500">
-                  Import your portfolio statement in Auth/Profile to compute zero-tax fresh capital inflows.
+                  Connect your broker or import a statement on the Portfolio page to compute zero-tax fresh capital inflows.
                 </p>
                 <Link
-                  href="/auth"
+                  href="/portfolio/holdings"
                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-semibold hover:bg-blue-700 transition"
                 >
-                  <span>Import Statement</span>
+                  <span>Go to Portfolio</span>
                   <ChevronRight size={13} />
                 </Link>
               </div>
@@ -987,27 +1010,14 @@ export default function ConsolidatedMasterWorkstation() {
                     <span className="w-2 h-2 rounded-full bg-blue-600"></span>
                     Zero-Tax Fresh Capital Inflow
                   </span>
-                  <span className="text-xs font-mono font-bold text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-200">
-                    ₹50,000 Cash
-                  </span>
                 </div>
-                <div className="p-2.5 bg-white rounded border border-blue-100 font-mono text-[11px] text-slate-700 space-y-1">
-                  {holdings.slice(0, 2).map((h, i) => {
-                    const allocAmount = i === 0 ? 30000 : 19800;
-                    const addShares = Math.max(1, Math.floor(allocAmount / (h.ltp || 100)));
-                    const outlay = addShares * (h.ltp || 100);
-                    return (
-                      <div key={h.symbol} className="flex justify-between">
-                        <span>{h.symbol} (+{addShares} shares @ ₹{h.ltp.toFixed(2)}):</span>
-                        <span className="font-semibold text-slate-900">{formatCurrency(outlay)}</span>
-                      </div>
-                    );
-                  })}
-                  <div className="pt-1 border-t border-slate-100 flex justify-between text-slate-500 text-[10px]">
-                    <span>Unallocated Cash Buffer:</span>
-                    <span>₹200.00</span>
-                  </div>
-                </div>
+                <p className="text-[11px] text-slate-600">
+                  The exact per-holding allocation for new cash is computed on the Tax Rebalance page, using your
+                  live valuation and the tax-aware rebalance engine.
+                </p>
+                <Link href="/portfolio/rebalance" className="text-[11px] text-blue-600 hover:underline font-semibold">
+                  Compute allocation →
+                </Link>
               </div>
             )}
 
@@ -1039,27 +1049,21 @@ export default function ConsolidatedMasterWorkstation() {
               </div>
             )}
 
-            {/* Automated Collar Sizer Breakdown */}
+            {/* Collar Sizer — real computation lives on /options/tail-risk */}
             <div className="mt-3 p-3 rounded-lg border border-slate-200 bg-slate-50 space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="font-semibold text-slate-800 flex items-center gap-1">
                   <Shield size={14} className="text-blue-600" />
-                  Automated Collar Sizer (26-SEP Expiry)
-                </span>
-                <span className="text-[10px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                  Net Debit: ₹230
+                  Protective Collar Sizer
                 </span>
               </div>
-              <div className="p-2 bg-white rounded border border-slate-200 font-mono text-[11px] space-y-1">
-                <div className="flex justify-between">
-                  <span>BUY 2 Lots NIFTY 24,200 PE:</span>
-                  <span className="text-red-600 font-semibold">@ ₹48.50 (₹2,425)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>SELL 2 Lots NIFTY 25,400 CE:</span>
-                  <span className="text-emerald-600 font-semibold">@ ₹46.20 (₹2,310)</span>
-                </div>
-              </div>
+              <p className="text-[11px] text-slate-500">
+                Strike selection and net debit/credit are computed against the live options chain on the Tail Risk
+                Sizer page.
+              </p>
+              <Link href="/options/tail-risk" className="text-[11px] text-blue-600 hover:underline font-semibold">
+                Size a hedge →
+              </Link>
             </div>
           </div>
 
@@ -1070,10 +1074,10 @@ export default function ConsolidatedMasterWorkstation() {
               className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-md shadow-sm flex items-center justify-center gap-2 transition-all active:scale-[0.99]"
             >
               <Zap size={15} />
-              <span>Execute Consolidated Rebalance & Hedge Basket</span>
+              <span>Preview Rebalance & Hedge Basket</span>
             </button>
             <div className="mt-1.5 text-center text-[10px] text-slate-400 font-mono">
-              Fyers Direct Order Routing • 0.004% Net Drag • Zero Capital Gains Liability
+              This preview does not place a real order — orders are not yet supported
             </div>
           </div>
         </div>
@@ -1295,20 +1299,20 @@ export default function ConsolidatedMasterWorkstation() {
 
                           {/* VaR Contrib */}
                           <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
-                            <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
-                              {item.varContrib}
+                            <span className="font-mono text-xs font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                              {item.varContrib ?? "—"}
                             </span>
                           </td>
 
-                          {/* Piotroski Score Badge */}
+                          {/* Fundamentals link — Piotroski/fundamentals scoring isn't computed on this page */}
                           <td className={`${isCompactDensity ? "py-1.5 px-3" : "py-3 px-3"} text-center`}>
-                            <button
-                              onClick={() => setSelectedForensicHolding(item)}
-                              className="inline-flex items-center gap-1 font-mono text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+                            <Link
+                              href={`/analyse/${item.symbol}`}
+                              className="font-mono text-[11px] text-slate-400 hover:text-blue-600 underline"
+                              title="View this holding's full fundamentals scorecard"
                             >
-                              <span>{item.piotroski}/9</span>
-                              <span className="text-[10px]">{item.piotroskiLabel}</span>
-                            </button>
+                              View fundamentals
+                            </Link>
                           </td>
 
                           {/* Catalyst / Signal Tag */}
@@ -1330,8 +1334,9 @@ export default function ConsolidatedMasterWorkstation() {
                             <div className="flex items-center justify-center gap-1.5">
                               {item.lockWarning ? (
                                 <button
-                                  onClick={() => alert(`Position ${item.symbol} is tax-locked under Budget 2024-25 LTCG Rule. Rebalancing trims disabled.`)}
-                                  className="px-2 py-1 bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-300 rounded text-[11px] font-semibold transition"
+                                  disabled
+                                  title={`${item.symbol} is protected from rebalance trims: ${item.lockWarning}`}
+                                  className="px-2 py-1 bg-amber-50 text-amber-800 border border-amber-300 rounded text-[11px] font-semibold cursor-not-allowed"
                                 >
                                   Locked
                                 </button>
@@ -1389,12 +1394,7 @@ export default function ConsolidatedMasterWorkstation() {
                       </div>
 
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                        <button
-                          onClick={() => setSelectedForensicHolding(item)}
-                          className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded font-mono font-medium"
-                        >
-                          Piotroski {item.piotroski}/9 {item.piotroskiLabel}
-                        </button>
+                        <span className="text-slate-400 font-mono">Fundamentals: view Deep Dive</span>
                         <Link
                           href={`/analyse/${item.symbol}`}
                           className="text-blue-600 font-semibold flex items-center gap-0.5"
@@ -1421,6 +1421,17 @@ export default function ConsolidatedMasterWorkstation() {
         {/* ============================================================ */}
         {activeTableTab === "alpha" && (
           <>
+            <div className="mx-4 mt-3 flex items-center gap-2 text-[11px] font-mono px-3 py-2 rounded border border-amber-200 bg-amber-50 text-amber-800">
+              <span className="font-bold uppercase">Sample data</span>
+              <span>—</span>
+              <span>
+                these six names illustrate the layout only. For real, ranked picks see the{" "}
+                <Link href="/recommendations" className="underline font-semibold">
+                  Ranked Alpha Board
+                </Link>
+                .
+              </span>
+            </div>
             {/* DESKTOP VIEW */}
             <div className="hidden md:block overflow-x-auto w-full min-w-0">
               <table className="w-full min-w-[960px] text-left text-xs border-collapse">
@@ -1491,12 +1502,6 @@ export default function ConsolidatedMasterWorkstation() {
 
                       <td className={`${isCompactDensity ? "py-1.5 px-4" : "py-3 px-4"} text-center`}>
                         <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => alert(`Added ${pick.symbol} (+4.62% Alpha pick) to rebalancing staging basket!`)}
-                            className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded transition shadow-xs"
-                          >
-                            Add to Basket
-                          </button>
                           <Link
                             href={`/analyse/${pick.symbol}`}
                             className="px-2.5 py-1 text-[11px] font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 border border-slate-300 rounded transition"
@@ -1544,6 +1549,17 @@ export default function ConsolidatedMasterWorkstation() {
         {/* ============================================================ */}
         {activeTableTab === "options" && (
           <>
+            <div className="mx-4 mt-3 flex items-center gap-2 text-[11px] font-mono px-3 py-2 rounded border border-amber-200 bg-amber-50 text-amber-800">
+              <span className="font-bold uppercase">Sample data</span>
+              <span>—</span>
+              <span>
+                illustrative layout only. For the live chain from your broker see{" "}
+                <Link href="/options" className="underline font-semibold">
+                  Options Chain &amp; OI
+                </Link>
+                .
+              </span>
+            </div>
             {/* DESKTOP VIEW */}
             <div className="hidden md:block overflow-x-auto w-full min-w-0">
               <table className="w-full min-w-[960px] text-center text-xs border-collapse">
@@ -1672,6 +1688,21 @@ export default function ConsolidatedMasterWorkstation() {
         {/* ============================================================ */}
         {activeTableTab === "backtest" && (
           <>
+            <div className="mx-4 mt-3 flex items-center gap-2 text-[11px] font-mono px-3 py-2 rounded border border-amber-200 bg-amber-50 text-amber-800">
+              <span className="font-bold uppercase">Sample data</span>
+              <span>—</span>
+              <span>
+                illustrative layout only. Run a real backtest in{" "}
+                <Link href="/lab" className="underline font-semibold">
+                  Strategy Lab
+                </Link>{" "}
+                or{" "}
+                <Link href="/backtest" className="underline font-semibold">
+                  Strategy Backtest (v1)
+                </Link>
+                .
+              </span>
+            </div>
             {/* DESKTOP VIEW */}
             <div className="hidden md:block overflow-x-auto w-full min-w-0">
               <table className="w-full min-w-[960px] text-left text-xs border-collapse">
@@ -1782,128 +1813,39 @@ export default function ConsolidatedMasterWorkstation() {
               <>
                 <div>
                   <span>Valuation In View: </span>
-                  <strong className="text-slate-900 font-bold tabular-nums">₹32,05,920.00</strong>
-                  <span className="text-[10px] text-slate-400 ml-1">(66.4% NAV)</span>
+                  <strong className="text-slate-900 font-bold tabular-nums">{formatCurrency(totalCurrentValue)}</strong>
                 </div>
                 <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
                 <div>
                   <span>Agg. Unrealized Gain: </span>
-                  <strong className="text-emerald-600 font-bold tabular-nums">+₹2,71,520.00 (+9.25%)</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Health Index: </span>
-                  <strong className="text-blue-600 font-bold">8.2 / 9 Avg F-Score</strong>
+                  <strong className={`font-bold tabular-nums ${totalPnL >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                    {totalPnL >= 0 ? "+" : ""}{formatCurrency(totalPnL)} ({formatPct(totalPnLPct)})
+                  </strong>
                 </div>
               </>
             )}
 
             {activeTableTab === "alpha" && (
-              <>
-                <div>
-                  <span>Avg Alpha Spread: </span>
-                  <strong className="text-emerald-600 font-bold tabular-nums">+4.04% over Nifty 500</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Coverage: </span>
-                  <strong className="text-blue-600 font-bold">100% Top Decile (D10)</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Universe: </span>
-                  <strong className="text-slate-900 font-bold">500 NSE Equities Evaluated</strong>
-                </div>
-              </>
+              <div className="text-amber-700">Sample data — not a live evaluation</div>
             )}
 
             {activeTableTab === "options" && (
-              <>
-                <div>
-                  <span>NIFTY Spot Index: </span>
-                  <strong className="text-slate-900 font-bold tabular-nums">24,852.15</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Put-Call Ratio (PCR): </span>
-                  <strong className="text-blue-600 font-bold tabular-nums">1.18 (Bullish Bias)</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Max Pain Strike: </span>
-                  <strong className="text-amber-700 font-bold">24,800</strong>
-                </div>
-              </>
+              <div className="text-amber-700">Sample data — see the live chain on Options</div>
             )}
 
             {activeTableTab === "backtest" && (
-              <>
-                <div>
-                  <span>Walk-Forward Models: </span>
-                  <strong className="text-slate-900 font-bold">4 Institutional Strategies</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Avg OOS Sharpe: </span>
-                  <strong className="text-blue-600 font-bold tabular-nums">1.68</strong>
-                </div>
-                <div className="h-4 w-[1px] bg-slate-200 hidden sm:block"></div>
-                <div>
-                  <span>Avg Stability Ratio: </span>
-                  <strong className="text-emerald-600 font-bold">0.86 (High Robustness)</strong>
-                </div>
-              </>
+              <div className="text-amber-700">Sample data — run a real backtest in Strategy Lab</div>
             )}
           </div>
 
-          {/* Pagination Controls */}
+          {/* Result count — all rows for the active tab are rendered above, no pagination */}
           <div className="flex items-center gap-2">
             <span className="text-[11px] text-slate-500 font-mono">
               {activeTableTab === "holdings" && `Showing ${filteredHoldings.length} of ${holdings.length} Positions`}
-              {activeTableTab === "alpha" && "Showing 1 - 6 of 50 Alpha Picks"}
-              {activeTableTab === "options" && "Showing 8 Active ATM Strikes"}
-              {activeTableTab === "backtest" && "Showing 4 Backtest Models"}
+              {activeTableTab === "alpha" && `Showing ${filteredAlphaPicks.length} Sample Picks`}
+              {activeTableTab === "options" && `Showing ${optionChain.length} Sample Strikes`}
+              {activeTableTab === "backtest" && `Showing ${backtestLogs.length} Sample Models`}
             </span>
-            <div className="inline-flex items-center rounded border border-slate-300 bg-white shadow-2xs">
-              <button
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="p-1 text-slate-400 hover:text-slate-800 disabled:opacity-30 transition"
-              >
-                <ChevronLeft size={15} />
-              </button>
-              <button
-                onClick={() => setCurrentPage(1)}
-                className={`px-2 py-0.5 text-[11px] font-bold border-x border-slate-200 transition ${
-                  currentPage === 1 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                1
-              </button>
-              <button
-                onClick={() => setCurrentPage(2)}
-                className={`px-2 py-0.5 text-[11px] font-bold border-r border-slate-200 transition ${
-                  currentPage === 2 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                2
-              </button>
-              <button
-                onClick={() => setCurrentPage(3)}
-                className={`px-2 py-0.5 text-[11px] font-bold border-r border-slate-200 transition ${
-                  currentPage === 3 ? "text-blue-600 bg-blue-50" : "text-slate-600 hover:bg-slate-50"
-                }`}
-              >
-                3
-              </button>
-              <button
-                onClick={() => setCurrentPage((p) => Math.min(3, p + 1))}
-                disabled={currentPage === 3}
-                className="p-1 text-slate-500 hover:text-slate-800 disabled:opacity-30 transition"
-              >
-                <ChevronRight size={15} />
-              </button>
-            </div>
           </div>
         </div>
 
@@ -1926,7 +1868,7 @@ export default function ConsolidatedMasterWorkstation() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Consolidated Rebalance Basket</h3>
-                  <p className="text-xs text-slate-500">Zero-Tax Capital Inflow + F&O Tail Hedge Deployment</p>
+                  <p className="text-xs text-slate-500">Illustrative preview only — order execution is not yet supported</p>
                 </div>
               </div>
               <button
@@ -1948,61 +1890,43 @@ export default function ConsolidatedMasterWorkstation() {
                   <button
                     onClick={() => {
                       setIsRebalanceModalOpen(false);
-                      router.push("/auth");
+                      router.push("/portfolio/holdings");
                     }}
                     className="px-4 py-2 bg-blue-600 text-white text-xs font-semibold rounded-md hover:bg-blue-700"
                   >
-                    Go to Auth &amp; Settings
+                    Go to Portfolio
                   </button>
                 </div>
               </div>
             ) : (
-              <div className="space-y-2 font-mono text-xs">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
-                  Leg 1: Equity Fresh Inflow (0% Realized STCG)
+              <div className="space-y-3 text-xs text-slate-600">
+                <p>
+                  This basket would combine a zero-tax capital allocation across your holdings with an F&amp;O tail
+                  hedge. Both legs are computed live — with real prices and tax impact — on their dedicated pages
+                  rather than duplicated here:
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    href="/portfolio/rebalance"
+                    onClick={() => setIsRebalanceModalOpen(false)}
+                    className="block p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition"
+                  >
+                    <div className="font-semibold text-slate-800">Leg 1: Tax-Aware Capital Allocation →</div>
+                    <div className="text-[11px] text-slate-500">Open the Tax Rebalance page for a real order sheet</div>
+                  </Link>
+                  <Link
+                    href="/options/tail-risk"
+                    onClick={() => setIsRebalanceModalOpen(false)}
+                    className="block p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-blue-300 transition"
+                  >
+                    <div className="font-semibold text-slate-800">Leg 2: F&amp;O Tail Hedge →</div>
+                    <div className="text-[11px] text-slate-500">Open the Tail Risk Sizer for real strikes and pricing</div>
+                  </Link>
                 </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                  {holdings.slice(0, 2).map((h, i) => {
-                    const allocAmount = i === 0 ? 30000 : 19800;
-                    const addShares = Math.max(1, Math.floor(allocAmount / (h.ltp || 100)));
-                    const outlay = addShares * (h.ltp || 100);
-                    return (
-                      <div key={h.symbol} className="flex justify-between items-center">
-                        <span className="font-semibold text-slate-800">BUY {addShares} {h.symbol} (CNC / Equity)</span>
-                        <span className="text-slate-900">@ ₹{h.ltp.toFixed(2)} = {formatCurrency(outlay)}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans pt-1">
-                  Leg 2: F&O Tail Hedge Collar (26-SEP Expiry)
-                </div>
-                <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5">
-                  <div className="flex justify-between items-center">
-                    <span className="text-red-700 font-semibold">BUY 2 Lots NIFTY 24,200 PE</span>
-                    <span className="text-slate-900">@ ₹48.50 = ₹2,425.00</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-emerald-700 font-semibold">SELL 2 Lots NIFTY 25,400 CE</span>
-                    <span className="text-slate-900">@ ₹46.20 = ₹2,310.00</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-blue-50 rounded-lg border border-blue-200 space-y-1 text-slate-800">
-                  <div className="flex justify-between font-bold">
-                    <span>Total Capital Outlay:</span>
-                    <span className="text-blue-700">₹50,004.00</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-600">
-                    <span>Estimated Capital Gains Tax:</span>
-                    <span className="text-emerald-700 font-semibold">₹0.00 (Zero STCG)</span>
-                  </div>
-                  <div className="flex justify-between text-[11px] text-slate-600">
-                    <span>Broker Order Execution Gateway:</span>
-                    <span>Direct FIX Routing</span>
-                  </div>
-                </div>
+                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded p-2">
+                  Order execution isn&apos;t supported by this app yet — any order still has to be placed with your
+                  broker directly.
+                </p>
               </div>
             )}
 
@@ -2010,149 +1934,26 @@ export default function ConsolidatedMasterWorkstation() {
             <div className="pt-2 flex items-center justify-end gap-3">
               <button
                 onClick={() => setIsRebalanceModalOpen(false)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-md border border-slate-300"
+                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md shadow-sm"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleExecuteBasket}
-                disabled={isExecutingBasket || basketExecuted}
-                className={`px-5 py-2 text-xs font-semibold text-white rounded-md shadow-sm transition flex items-center gap-2 ${
-                  basketExecuted
-                    ? "bg-emerald-600"
-                    : "bg-blue-600 hover:bg-blue-700"
-                }`}
-              >
-                {isExecutingBasket && <RefreshCw size={14} className="animate-spin" />}
-                {basketExecuted && <CheckCircle2 size={14} />}
-                <span>
-                  {basketExecuted
-                    ? "Basket Successfully Dispatched!"
-                    : isExecutingBasket
-                    ? "Routing Orders via Fyers..."
-                    : "Confirm & Transmit Orders"}
-                </span>
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* 6. INTERACTIVE MODAL: 9-Point Piotroski Forensic Breakdown */}
-      {selectedForensicHolding && (
-        <div 
-          onClick={() => setSelectedForensicHolding(null)}
-          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
-        >
-          <div 
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white border border-slate-200 rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4 cursor-default"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold font-mono">
-                  {selectedForensicHolding.piotroski}/9
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">
-                    {selectedForensicHolding.symbol} — Forensic Health Matrix
-                  </h3>
-                  <p className="text-xs text-slate-500">9-Point Piotroski F-Score Decomposition</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedForensicHolding(null)}
-                className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-2 text-xs font-mono">
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans">
-                Profitability & Cash Generation (4 Points)
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded border border-slate-200 space-y-1">
-                <div className="flex justify-between">
-                  <span>Return on Assets (ROA &gt; 0):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Operating Cash Flow (CFO &gt; 0):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Accruals Quality (CFO &gt; Net Income):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Δ ROA (YoY Expansion):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-              </div>
-
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans pt-1">
-                Leverage, Liquidity & Solvency (3 Points)
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded border border-slate-200 space-y-1">
-                <div className="flex justify-between">
-                  <span>Δ Long-term Debt Ratio (Decreased):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Δ Current Ratio (Higher Liquidity):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Zero Equity Dilution (No Fresh Shares):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-              </div>
-
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider font-sans pt-1">
-                Operating Efficiency (2 Points)
-              </div>
-              <div className="p-2.5 bg-slate-50 rounded border border-slate-200 space-y-1">
-                <div className="flex justify-between">
-                  <span>Δ Gross Margin (Pricing Power):</span>
-                  <span className="text-emerald-700 font-bold">PASS (+1)</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Δ Asset Turnover (Operational Speed):</span>
-                  <span className="text-slate-500 font-medium">NEUTRAL (0)</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center justify-between">
-              <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded border border-emerald-200">
-                Classification: High Quality Institutional Compounder
-              </span>
-              <Link
-                href={`/analyse/${selectedForensicHolding.symbol}`}
-                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-md"
-              >
-                View Full Audit
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 7. SYSTEM TELEMETRY BOTTOM STATUS BAR (Master Console Spec) */}
+      {/* 6. STATUS FOOTER */}
       <footer className="mt-8 pt-4 border-t border-slate-200 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] font-mono text-slate-500">
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            NSE Equity Feed: <strong className="text-emerald-700 font-semibold">Synchronized</strong>
+            <span className={`w-2 h-2 rounded-full ${portfolioError ? "bg-red-500" : "bg-emerald-500"}`}></span>
+            Portfolio Data: <strong className={portfolioError ? "text-red-700" : "text-emerald-700 font-semibold"}>
+              {portfolioError ? "Error" : isPortfolioLoading ? "Loading" : "Loaded"}
+            </strong>
           </span>
           <span>•</span>
-          <span>F&amp;O Tick Stream: <strong className="text-emerald-700 font-semibold">3.8ms Latency</strong></span>
-          <span>•</span>
-          <span>SEBI Compliance Rulebook: <strong className="text-slate-800 font-medium">Budget 2024-25 STT/LTCG</strong></span>
-        </div>
-        <div className="text-slate-500 text-center md:text-right">
-          <span>StockPortfolio.in Enterprise OS v4.2.8 • Ant Design Pro / FactSet Architecture</span>
+          <span>Tax Rules: <strong className="text-slate-800 font-medium">Budget 2024-25 STT/LTCG</strong></span>
         </div>
       </footer>
 

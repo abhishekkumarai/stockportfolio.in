@@ -92,10 +92,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex w-full max-w-full min-h-screen overflow-x-hidden">
-      {/* Desktop Fixed Enterprise Navigation Rail */}
+    <div className="flex w-full max-w-full h-screen overflow-hidden">
+      {/* Desktop Fixed Enterprise Navigation Rail — height comes from this
+          h-screen/overflow-hidden shell, not from sticky positioning, since
+          an overflow-x-hidden ancestor implicitly makes its overflow-y
+          "auto" (CSS spec), which breaks position:sticky against the real
+          viewport. The sidebar's own height is simply always the full
+          shell height; only the content column to the right scrolls. */}
       <div
-        className={`hidden lg:block shrink-0 transition-[width] duration-200 ease-in-out h-screen sticky top-0 ${
+        className={`hidden lg:block shrink-0 transition-[width] duration-200 ease-in-out h-full ${
           desktopSidebarOpen ? "w-60" : "w-0 overflow-hidden"
         }`}
       >
@@ -121,8 +126,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Right Main Viewport */}
-      <div className="flex-1 min-w-0 w-full max-w-full flex flex-col min-h-screen overflow-x-hidden bg-slate-50">
+      {/* Right Main Viewport — the only element that scrolls vertically;
+          the sidebar column above is unaffected by how tall this gets. */}
+      <div className="flex-1 min-w-0 w-full max-w-full flex flex-col h-full overflow-y-auto overflow-x-hidden bg-slate-50">
         {/* Top Real-Time Command Bar */}
         <TopBar
           onToggleSidebar={handleToggleSidebar}

@@ -21,6 +21,12 @@ import {
   X,
   LogIn,
   LogOut,
+  Globe,
+  History,
+  PiggyBank,
+  Flame,
+  Sparkles,
+  Wallet,
 } from "lucide-react";
 import { getFyersStatus, getToken, loadPortfolio, type FyersStatus } from "@/lib/portfolioApi";
 import { getAuthUser, isAuthenticated, logout as doLogout, type User } from "@/lib/auth";
@@ -188,9 +194,21 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                   <LayoutDashboard size={16} />
                   <span>Master Console</span>
                 </div>
-                <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-600 text-white font-bold">
-                  Live
-                </span>
+              </Link>
+
+              <Link
+                href="/portfolio/holdings"
+                onClick={() => handleNav("/portfolio/holdings")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio/holdings")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Wallet size={16} />
+                  <span>Holdings</span>
+                </div>
               </Link>
 
               <Link
@@ -209,10 +227,25 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
               </Link>
 
               <Link
-                href="/portfolio?tab=rebalance"
-                onClick={() => handleNav("/portfolio?tab=rebalance")}
+                href="/portfolio/stress"
+                onClick={() => handleNav("/portfolio/stress")}
                 className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-                  isActive("/portfolio?tab=rebalance")
+                  isActive("/portfolio/stress")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Flame size={16} />
+                  <span>Crash Simulator</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/portfolio/rebalance"
+                onClick={() => handleNav("/portfolio/rebalance")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio/rebalance")
                     ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -221,16 +254,13 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                   <Scale size={16} />
                   <span>Tax Rebalance</span>
                 </div>
-                <span className="text-[9px] font-mono px-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  0% Tax
-                </span>
               </Link>
 
               <Link
-                href="/portfolio?tab=catalysts"
-                onClick={() => handleNav("/portfolio?tab=catalysts")}
+                href="/portfolio/news"
+                onClick={() => handleNav("/portfolio/news")}
                 className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-                  isActive("/portfolio?tab=catalysts")
+                  isActive("/portfolio/news")
                     ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -238,6 +268,21 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                 <div className="flex items-center gap-2.5">
                   <Newspaper size={16} />
                   <span>Catalysts & News</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/portfolio/memo"
+                onClick={() => handleNav("/portfolio/memo")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/portfolio/memo")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Sparkles size={16} />
+                  <span>AI Memo</span>
                 </div>
               </Link>
             </nav>
@@ -315,6 +360,36 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                   <span>Market Pulse</span>
                 </div>
               </Link>
+
+              <Link
+                href="/macro"
+                onClick={() => handleNav("/macro")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/macro")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Globe size={16} />
+                  <span>Macro Radar</span>
+                </div>
+              </Link>
+
+              <Link
+                href="/mutualfunds"
+                onClick={() => handleNav("/mutualfunds")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  pathname.startsWith("/mutualfunds")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <PiggyBank size={16} />
+                  <span>Mutual Funds</span>
+                </div>
+              </Link>
             </nav>
           </div>
 
@@ -337,16 +412,22 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                   <Layers size={16} />
                   <span>Options Chain & OI</span>
                 </div>
-                <span className="text-[9px] font-mono px-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Fyers
-                </span>
+                {fyersStatus?.connected ? (
+                  <span className="text-[9px] font-mono px-1 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    Fyers
+                  </span>
+                ) : (
+                  <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-400 border border-slate-200">
+                    Not connected
+                  </span>
+                )}
               </Link>
 
               <Link
-                href="/options?tab=sizer"
-                onClick={() => handleNav("/options?tab=sizer")}
+                href="/options/tail-risk"
+                onClick={() => handleNav("/options/tail-risk")}
                 className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
-                  isActive("/options?tab=sizer")
+                  isActive("/options/tail-risk")
                     ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
                     : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                 }`}
@@ -414,6 +495,21 @@ export default function Sidebar({ onNavigate, onClose, onToggleCollapse }: Sideb
                 <span className="text-[9px] font-mono px-1 rounded bg-slate-100 text-slate-500 border border-slate-200">
                   Sim
                 </span>
+              </Link>
+
+              <Link
+                href="/backtest"
+                onClick={() => handleNav("/backtest")}
+                className={`flex items-center justify-between px-3 py-2 rounded-md transition-colors ${
+                  isActive("/backtest")
+                    ? "bg-blue-50 text-blue-600 font-semibold border-l-[3px] border-blue-600"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <History size={16} />
+                  <span>Strategy Backtest (v1)</span>
+                </div>
               </Link>
             </nav>
           </div>

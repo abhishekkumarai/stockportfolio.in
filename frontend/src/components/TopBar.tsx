@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { Search, Bell, TrendingUp, TrendingDown, Menu, X } from "lucide-react";
 import { apiUrl } from "@/lib/api";
+import { getMacroOverview, type MacroOverview } from "@/lib/macroApi";
 
 interface TickerSuggestion {
   symbol: string;
@@ -29,6 +30,23 @@ export default function TopBar({
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [indices, setIndices] = useState<MacroOverview["indices"] | null>(null);
+  const [vix, setVix] = useState<MacroOverview["vix"] | null>(null);
+
+  // Real index/VIX ticks from the macro snapshot (15-min TTL cache server-side)
+  useEffect(() => {
+    let cancelled = false;
+    getMacroOverview()
+      .then((data) => {
+        if (cancelled || !data.available) return;
+        setIndices(data.indices ?? null);
+        setVix(data.vix ?? null);
+      })
+      .catch((err) => console.error("Error fetching macro overview:", err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Keyboard shortcut listener for Cmd+K / Ctrl+K and Escape
   useEffect(() => {
@@ -118,31 +136,26 @@ export default function TopBar({
           <Menu size={20} />
         </button>
 
-        {/* Live Market Telemetry Chips */}
+        {/* Market Telemetry Chips — real data from /api/macro, hidden until available */}
         <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-mono">
-          <div className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-            <span className="text-slate-500 text-[10px] sm:text-[11px] font-sans font-medium">NIFTY 50</span>
-            <span className="font-semibold text-slate-900 text-[11px]">24,852.15</span>
-            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingUp size={9} className="mr-0.5" /> +0.58%
-            </span>
-          </div>
-
-          <div className="hidden xl:flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-            <span className="text-slate-500 text-[11px] font-sans font-medium">SENSEX</span>
-            <span className="font-semibold text-slate-900 text-[11px]">81,332.70</span>
-            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingUp size={9} className="mr-0.5" /> +0.51%
-            </span>
-          </div>
-
-          <div className="hidden 2xl:flex items-center gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0">
-            <span className="text-slate-500 text-[11px] font-sans font-medium">INDIA VIX</span>
-            <span className="font-semibold text-slate-900 text-[11px]">13.45</span>
-            <span className="text-emerald-700 font-semibold text-[10px] bg-emerald-50 px-1 rounded flex items-center">
-              <TrendingDown size={9} className="mr-0.5" /> -4.41%
-            </span>
-          </div>
+          <TickerChip
+            className="flex"
+            label="NIFTY 50"
+            value={indices?.nifty50?.current}
+            changePct={indices?.nifty50?.change_pct}
+          />
+          <TickerChip
+            className="hidden xl:flex"
+            label="SENSEX"
+            value={indices?.sensex?.current}
+            changePct={indices?.sensex?.change_pct}
+          />
+          <TickerChip
+            className="hidden 2xl:flex"
+            label="INDIA VIX"
+            value={vix?.current}
+            changePct={vix?.change_pct}
+          />
         </div>
       </div>
 
@@ -185,37 +198,62 @@ export default function TopBar({
         )}
       </div>
 
-      {/* Right Section: Socket Status & Notifications */}
+      {/* Right Section: Notifications & Account */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Live WebSocket status */}
-        <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded-full text-xs font-mono text-emerald-700 shrink-0">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span className="font-medium text-[11px] hidden lg:inline">WebSocket Live</span>
-          <span className="font-medium text-[11px] lg:hidden">Live</span>
-          <span className="font-mono text-[10px] text-emerald-600">3ms</span>
-        </div>
-
-        {/* Notifications */}
+        {/* Notifications — no notification source is wired yet, so no unread badge */}
         <button
           type="button"
-          aria-label="Notifications"
-          className="relative p-1.5 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors shrink-0"
+          aria-label="Notifications (none yet)"
+          title="Notifications are not yet available"
+          disabled
+          className="relative p-1.5 text-slate-300 rounded-md shrink-0 cursor-not-allowed"
         >
           <Bell size={17} />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-600 rounded-full ring-2 ring-white"></span>
         </button>
 
-        {/* Broker Quick Link (visible on wide displays, profile is in sidebar bottom) */}
+        {/* Account / Broker Quick Link (visible on wide displays, profile is in sidebar bottom) */}
         <Link
           href="/auth"
           className="hidden 2xl:flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition group text-decoration-none shrink-0"
-          title="Manage Broker Auth & API Keys"
+          title="Sign in / manage account"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0"></span>
-          <span className="text-[11px] font-semibold text-slate-800 group-hover:text-blue-600 transition">Broker Active</span>
+          <span className="text-[11px] font-semibold text-slate-800 group-hover:text-blue-600 transition">Account</span>
           <span className="text-[10px] text-slate-400">↗</span>
         </Link>
       </div>
     </header>
+  );
+}
+
+function TickerChip({
+  className,
+  label,
+  value,
+  changePct,
+}: {
+  className: string;
+  label: string;
+  value: number | null | undefined;
+  changePct: number | null | undefined;
+}) {
+  // Nothing fetched yet, or the upstream feed was unavailable — omit rather than fabricate.
+  if (value == null || changePct == null) return null;
+  const isUp = changePct >= 0;
+  return (
+    <div className={`${className} items-center gap-1 sm:gap-1.5 px-2 py-1 bg-slate-50 rounded border border-slate-200 shrink-0`}>
+      <span className="text-slate-500 text-[10px] sm:text-[11px] font-sans font-medium">{label}</span>
+      <span className="font-semibold text-slate-900 text-[11px]">
+        {value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+      </span>
+      <span
+        className={`font-semibold text-[10px] px-1 rounded flex items-center ${
+          isUp ? "text-emerald-700 bg-emerald-50" : "text-red-700 bg-red-50"
+        }`}
+      >
+        {isUp ? <TrendingUp size={9} className="mr-0.5" /> : <TrendingDown size={9} className="mr-0.5" />}
+        {isUp ? "+" : ""}
+        {changePct.toFixed(2)}%
+      </span>
+    </div>
   );
 }

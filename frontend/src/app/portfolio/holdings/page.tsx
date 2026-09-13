@@ -1,14 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import OverviewView from "./OverviewView";
+import HoldingsView from "./HoldingsView";
 
 export const metadata: Metadata = {
-  title: "My Portfolio | stockportfolio.in",
+  title: "Holdings | stockportfolio.in",
   description:
     "Track your Indian equity and mutual fund holdings in one place, with live valuations, profit and loss, and allocation breakdowns.",
 };
 
-export default function PortfolioOverviewPage() {
+export default function PortfolioHoldingsPage() {
   return (
     <Suspense
       fallback={
@@ -17,7 +17,7 @@ export default function PortfolioOverviewPage() {
         </div>
       }
     >
-      <OverviewView />
+      <HoldingsView />
     </Suspense>
   );
 }

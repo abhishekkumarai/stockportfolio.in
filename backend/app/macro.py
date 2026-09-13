@@ -34,6 +34,7 @@ MACRO_TICKERS: Dict[str, str] = {
     "gold": "GC=F",           # Gold COMEX Futures
     "vix": "^INDIAVIX",       # India VIX Volatility Index
     "nifty50": "^NSEI",       # NIFTY 50 Benchmark Index
+    "sensex": "^BSESN",       # BSE SENSEX Benchmark Index
 }
 
 # Major NIFTY Sectoral Indices
@@ -411,6 +412,22 @@ def calculate_stock_macro_betas(
     }
 
 
+def _latest_and_day_change(series: Optional[pd.Series]) -> Dict[str, Optional[float]]:
+    """Latest close and 1-day percentage change for a price series, or Nones if unavailable."""
+    if series is None:
+        return {"current": None, "change_pct": None}
+    clean = series.dropna()
+    if len(clean) < 2:
+        return {"current": None, "change_pct": None}
+    curr = float(clean.iloc[-1])
+    prev = float(clean.iloc[-2])
+    change_pct = ((curr - prev) / prev * 100.0) if prev else None
+    return {
+        "current": round(curr, 2),
+        "change_pct": round(change_pct, 2) if change_pct is not None else None,
+    }
+
+
 def fetch_macro_snapshot(use_cache: bool = True) -> Dict[str, Any]:
     """Downloads live macro indicators and sector series via Yahoo Finance,
     computing the complete macro transmission payload.
@@ -457,6 +474,7 @@ def fetch_macro_snapshot(use_cache: bool = True) -> Dict[str, Any]:
     gold_s = close_series(data, MACRO_TICKERS["gold"])
     vix_s = close_series(data, MACRO_TICKERS["vix"])
     nifty_s = close_series(data, MACRO_TICKERS["nifty50"])
+    sensex_s = close_series(data, MACRO_TICKERS["sensex"])
 
     if crude_s is None or inr_s is None or nifty_s is None:
         return {
@@ -506,6 +524,11 @@ def fetch_macro_snapshot(use_cache: bool = True) -> Dict[str, Any]:
         "vix": {
             "current": regime.get("vix_value"),
             "change_5d_pct": regime.get("vix_change_5d_pct"),
+            **_latest_and_day_change(vix_s),
+        },
+        "indices": {
+            "nifty50": _latest_and_day_change(nifty_s),
+            "sensex": _latest_and_day_change(sensex_s),
         },
         "sector_rotation": sector_rotation,
     }

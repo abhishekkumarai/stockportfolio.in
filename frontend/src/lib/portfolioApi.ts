@@ -486,6 +486,7 @@ export function loadPortfolio(): StoredPortfolio {
 export function savePortfolio(portfolio: StoredPortfolio): void {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(portfolio));
+  window.dispatchEvent(new Event("portfolio-updated"));
 }
 
 // ---- formatting -----------------------------------------------------------

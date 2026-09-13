@@ -55,8 +55,13 @@ export interface MacroOverview {
     yield_pct: number | null;
   };
   vix?: {
-    current: number;
+    current: number | null;
     change_5d_pct: number;
+    change_pct?: number | null;
+  };
+  indices?: {
+    nifty50: { current: number | null; change_pct: number | null };
+    sensex: { current: number | null; change_pct: number | null };
   };
   sector_rotation?: SectorRotationItem[];
 }
