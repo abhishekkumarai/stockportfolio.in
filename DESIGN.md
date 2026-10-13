@@ -1,5 +1,5 @@
 ---
-version: 2.0
+version: 3.0
 name: stockportfolio-enterprise-light
 description: |
   A high-density, institutional-grade console for Indian equity and portfolio intelligence,
@@ -82,3 +82,34 @@ figure     JetBrains Mono 500/600, tabular-nums                      prices, P&L
   - Primary: `#2563EB` solid fill, white text, 4px-6px radius, hover `#1D4ED8`.
   - Secondary: `#FFFFFF` fill with `1px solid #CBD5E1`, `#0F172A` text, hover `#F1F5F9`.
 - **Status Pills & Chips**: Pill-shaped (`rounded-full`), 24px height, with light semantic background fill (e.g., `#ECFDF5` for buy, `#FEF2F2` for sell), 1px tinted border, and dark semantic text.
+
+---
+
+## v3 addendum: Flutter Web shell and Multibagg-style layout
+
+v3 keeps every token above (palette, semantic colour rules, tabular numerals) and changes
+**structure**. The frontend is now `flutter_app/` (Flutter Web); the Next.js app in
+`frontend/` stays until parity is confirmed.
+
+- **Top navigation replaces the 240px sidebar.** A sticky 64px white bar with a 1px
+  `border-subtle` bottom edge: logo left, grouped dropdown menus centre
+  (Research, Markets, Portfolio, Derivatives & Quant, Lab) plus Pricing, search (Ctrl/Cmd+K)
+  and Login or the account avatar right. The link list lives in one file,
+  `lib/core/nav_config.dart`, and also drives the mobile drawer and the footer.
+- **Announcement strip** above the bar: `primary-subtle` fill, dismissible.
+- **Mobile (< 760px):** hamburger drawer with expandable groups and a five-tab bottom bar
+  (Portfolio, Alerts, Ask Iris, Discovery, Markets).
+- **Content column:** max width 1200px, 28px side padding (16px on mobile), 28px vertical.
+- **Page header:** title Public Sans 700 at 26px with -0.4 tracking, optional 14px
+  `ink-secondary` subtitle, actions right-aligned.
+- **Type:** Public Sans for text, JetBrains Mono for every figure (amounts, percentages,
+  ratios, strikes). Labels are 11px, 600, +0.8 tracking, uppercase.
+- **Components:** `Panel` (white, 10px radius, 1px border, hairline shadow), `KpiCard`,
+  `DeltaBadge`, `StatusPill` (tinted fill + 25% tinted border), `DataTableX` (right-aligned
+  mono numerics, hairline rows, horizontal scroll), `SegTabs`, `ResponsiveGrid` (4 / 2 / 1
+  columns), `EmptyState` / `ErrorState` / `Loading`.
+- **Honest empty states.** Where no data source is connected the UI says so in words
+  (backend returns `source: "not_connected"`); no placeholder figures, ever.
+- **Landing page:** left-aligned hero beside a live market panel fed by `/api/macro`, then
+  alternating text rows. No gradients, no glass, no centred three-card grid.
+- **Still forbidden:** dark surfaces, glow, backdrop blur, purple or cyan accents.

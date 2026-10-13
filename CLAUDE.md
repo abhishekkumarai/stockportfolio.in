@@ -42,3 +42,29 @@ Commit the updated `pyproject.toml` and `uv.lock` together.
 
 The production Docker image (`backend/Dockerfile`) builds with
 `uv sync --frozen --no-dev`, so the `dev` group (pytest, httpx2) never ships.
+
+## Flutter Web frontend (`flutter_app/`)
+
+Rewrite of `frontend/` (Next.js) in Flutter Web, same FastAPI backend. Tracked in Jira
+project REC, Epics 8-13 (REC-83 to REC-88). `frontend/` stays until parity is confirmed.
+
+```bash
+cd flutter_app
+flutter pub get
+flutter analyze && flutter test
+flutter run -d chrome --dart-define=API_URL=http://127.0.0.1:8001   # dev
+flutter build web --release --dart-define=API_URL=https://<api>     # release
+```
+
+- `API_URL` is a `--dart-define`; release builds throw if it is unset (`lib/core/config.dart`).
+- Layout: `lib/core` (config, theme tokens, http client, auth, nav config), `lib/widgets`
+  (shell, common widgets, charts), `lib/features/<area>` (pages), `lib/router.dart`
+  (go_router; auth guard replaces `middleware.ts`; page builders registered in `pageBuilders`).
+- Nav is driven by `lib/core/nav_config.dart` only; add a route there and in `pageBuilders`.
+- Pages read backend JSON as loose maps (`asMap`/`asList`/`asNum`), mirroring `frontend/src/lib/*Api.ts`.
+- Zero mock data: feeds without a source return `{items: [], source: "not_connected"}` from
+  `backend/app/routes/market_data.py` and the UI shows an empty state saying so.
+- Deep links need an SPA fallback: `flutter_app/vercel.json` (Vercel) and `nginx.conf` (Docker).
+  A plain `python -m http.server` 404s on `/screener`.
+- Compose runs it as `flutter-web` on :3004 beside the Next.js `frontend` service.
+- The installed `file_picker` 13 API is `FilePicker.pickFile()` + `readAsBytes()`.

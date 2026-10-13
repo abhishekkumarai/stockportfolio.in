@@ -20,7 +20,7 @@ x-backend-env: &backend-env
   DATABASE_URL: postgresql://postgres:postgres@db:5432/stockportfolio
   REDIS_URL: redis://redis:6379/0
   # The frontend container publishes on 3001; 3000 covers `pnpm dev` on the host.
-  FRONTEND_ORIGIN: http://localhost:3003,http://localhost:3001,http://localhost:3000
+  FRONTEND_ORIGIN: http://localhost:3004,http://localhost:3003,http://localhost:3001,http://localhost:3000
   SCHEDULER_TIMEZONE: ${SCHEDULER_TIMEZONE:-Asia/Kolkata}
   # Optional, all read from a root .env (or the shell) so no secret is ever
   # written into this file. Blank is a supported value for every one of them.
@@ -157,6 +157,22 @@ services:
       NEXT_PUBLIC_DISABLE_AUTH: "false"
     ports:
       - "${FRONTEND_PORT:-3003}:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # Flutter web rewrite of the frontend. Runs beside the Next.js app until
+  # parity is confirmed; `docker compose up --build flutter-web` to try it.
+  flutter-web:
+    restart: unless-stopped
+    build:
+      context: ./flutter_app
+      dockerfile: Dockerfile
+      args:
+        # Compiled into the bundle (--dart-define), so a build arg, not `environment:`.
+        API_URL: http://localhost:8001
+    ports:
+      - "${FLUTTER_WEB_PORT:-3004}:80"
     depends_on:
       api:
         condition: service_healthy
