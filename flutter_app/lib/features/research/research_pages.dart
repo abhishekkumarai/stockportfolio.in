@@ -188,123 +188,6 @@ class _AnalyseIndexPageState extends State<AnalyseIndexPage> {
   }
 }
 
-class AnalyseTickerPage extends StatefulWidget {
-  const AnalyseTickerPage({super.key, required this.ticker});
-  final String ticker;
-  @override
-  State<AnalyseTickerPage> createState() => _AnalyseTickerPageState();
-}
-
-class _AnalyseTickerPageState extends State<AnalyseTickerPage> {
-  static const _frames = ['week', 'month', 'quarter', 'year'];
-  int _tf = 1;
-  late Future<Json> _data = _load();
-
-  Future<Json> _load() =>
-      getJson('/api/stocks/analyse${queryString({'ticker': widget.ticker, 'timeframe': _frames[_tf]})}').then(asMap);
-
-  @override
-  void didUpdateWidget(covariant AnalyseTickerPage old) {
-    super.didUpdateWidget(old);
-    if (old.ticker != widget.ticker) _data = _load();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return PageBox(
-      child: FutureBody<Json>(
-        future: _data,
-        builder: (d) {
-          final tech = asMap(d['technicals']);
-          final sent = asMap(d['sentiment']);
-          final rec = asMap(d['recommendation']);
-          final det = asMap(d['details']);
-          final chart = asList(d['chart_data']).map(asMap).toList();
-          final pts = [for (var i = 0; i < chart.length; i++) FlSpot(i.toDouble(), asNum(chart[i]['close']) ?? 0)];
-          final change = asNum(d['change_pct']);
-          final decision = (rec['decision'] ?? '').toString();
-          return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            PageHeader(
-              title: (d['name'] ?? widget.ticker).toString(),
-              subtitle: widget.ticker,
-              actions: [
-                OutlinedButton(onPressed: () => context.go('/analyse'), child: const Text('Search another')),
-              ],
-            ),
-            ResponsiveGrid(children: [
-              KpiCard(label: 'Price', value: fmtNum(asNum(d['price'])), delta: change),
-              KpiCard(label: 'Score', value: '${rec['score'] ?? '-'}', caption: decision),
-              KpiCard(label: 'RSI (14)', value: fmtNum(asNum(tech['rsi']), dp: 1), caption: (tech['rsi_desc'] ?? '').toString()),
-              KpiCard(label: 'Trend', value: (tech['trend'] ?? '-').toString()),
-            ]),
-            const SizedBox(height: 16),
-            Panel(
-              title: 'Price',
-              trailing: SegTabs(
-                labels: const ['1W', '1M', '3M', '1Y'],
-                index: _tf,
-                onChanged: (i) => setState(() {
-                  _tf = i;
-                  _data = _load();
-                }),
-              ),
-              child: LineChartX(
-                height: 300,
-                yFormat: (v) => fmtNum(v, dp: 0),
-                xFormat: (x) {
-                  final i = x.round();
-                  return i >= 0 && i < chart.length ? chart[i]['date'].toString().substring(5, 10) : '';
-                },
-                series: [Series('Close', pts, Palette.primary, area: true)],
-              ),
-            ),
-            const SizedBox(height: 16),
-            ResponsiveGrid(columns: 3, children: [
-              Panel(title: 'Verdict', child: Text((rec['interpretation'] ?? 'No interpretation returned.').toString(), style: AppText.sans(size: 14, color: Palette.ink, height: 1.5))),
-              Panel(
-                title: 'Technicals',
-                child: Column(children: [
-                  for (final k in const ['sma20', 'sma50', 'sma200', 'ema20', 'ema50']) _row(k.toUpperCase(), fmtNum(asNum(tech[k]))),
-                ]),
-              ),
-              Panel(
-                title: 'Day range & 52 week',
-                child: Column(children: [
-                  _row('Day high', fmtNum(asNum(det['day_high']))),
-                  _row('Day low', fmtNum(asNum(det['day_low']))),
-                  _row('52w high', fmtNum(asNum(det['fifty_two_week_high']))),
-                  _row('52w low', fmtNum(asNum(det['fifty_two_week_low']))),
-                  _row('Volume', fmtNum(asNum(det['volume']), dp: 0)),
-                ]),
-              ),
-            ]),
-            const SizedBox(height: 16),
-            Panel(
-              title: 'News sentiment',
-              trailing: StatusPill((sent['desc'] ?? 'n/a').toString(), tone: (asNum(sent['compound']) ?? 0) > 0.05 ? Tone.buy : ((asNum(sent['compound']) ?? 0) < -0.05 ? Tone.sell : Tone.neutral)),
-              child: asList(d['news']).isEmpty
-                  ? Text('No recent headlines.', style: AppText.sans(color: Palette.inkSecondary))
-                  : Column(children: [
-                      for (final n in asList(d['news']).map(asMap).take(8))
-                        ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(n['title'].toString(), style: AppText.sans(size: 14, weight: FontWeight.w500)),
-                          subtitle: Text('${n['source'] ?? ''} · ${n['time'] ?? ''}', style: AppText.sans(size: 12, color: Palette.inkSecondary)),
-                        ),
-                    ]),
-            ),
-          ]);
-        },
-      ),
-    );
-  }
-
-  Widget _row(String k, String v) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Row(children: [Expanded(child: Text(k, style: AppText.sans(size: 13, color: Palette.inkSecondary))), Text(v, style: AppText.mono())]),
-      );
-}
-
 // -------------------------------------------------------- recommendations
 
 class RecommendationsPage extends StatefulWidget {
@@ -684,7 +567,7 @@ class FundDetailPage extends StatelessWidget {
               KpiCard(label: 'Max drawdown', value: fmtPct(asNum(risk['max_drawdown_pct']), sign: false)),
             ]),
             const SizedBox(height: 16),
-            Panel(title: 'NAV history', child: LineChartX(height: 280, yFormat: (v) => fmtNum(v), xFormat: (x) { final i = x.round(); return i >= 0 && i < hist.length ? hist[i]['date'].toString().substring(6) : ''; }, series: [Series('NAV', pts, Palette.primary, area: true)])),
+            Panel(title: 'NAV history', child: LineChartX(height: 280, yFormat: (v) => fmtNum(v), xFormat: (x) { final i = x.round(); return i >= 0 && i < hist.length ? axisSlice(hist[i]['date'], 6) : ''; }, series: [Series('NAV', pts, Palette.primary, area: true)])),
             const SizedBox(height: 16),
             Panel(
               title: 'Trailing returns',

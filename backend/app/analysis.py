@@ -105,6 +105,14 @@ def get_stock_analysis(ticker_symbol: str, news_headlines: List[str], timeframe:
         if hist.index.tz is not None:
             hist.index = hist.index.tz_localize(None)
 
+        # yfinance can end the series with an incomplete bar (NaN OHLC) while a
+        # session is open or just closed. One NaN poisons every rolling mean and
+        # the RSI, and NaN is not valid JSON, so the endpoint 500s. Drop bars
+        # that have no close rather than patching each output field.
+        hist = hist.dropna(subset=["Close"])
+        if hist.empty:
+            raise ValueError(f"No complete price bars returned for ticker {ticker_symbol}")
+
         # Fetch basic stock info / meta
         info = ticker.info
         current_price = info.get("currentPrice") or info.get("regularMarketPrice")

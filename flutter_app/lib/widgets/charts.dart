@@ -3,6 +3,22 @@ import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
 
+/// Safe slice for axis labels. Date strings arrive in several formats
+/// ('2025-10-13', 'Oct 13', '13-10-2025'), so a fixed substring(5, 10) throws
+/// RangeError on the short ones, and an exception during paint wedges the page.
+String axisSlice(Object? value, int start, [int? end]) {
+  final s = value?.toString() ?? '';
+  if (start >= s.length) return s;
+  final e = end == null || end > s.length ? s.length : end;
+  return s.substring(start, e);
+}
+
+/// ISO dates ('2025-10-13T00:00:00') shorten to '10-13'; other formats are shown as given.
+String chartDateLabel(Object? date) {
+  final s = date?.toString() ?? '';
+  return RegExp(r'^\d{4}-\d{2}-\d{2}').hasMatch(s) ? s.substring(5, 10) : s;
+}
+
 class Series {
   const Series(this.label, this.points, this.color, {this.dashed = false, this.area = false, this.width = 2});
   final String label;
@@ -14,6 +30,17 @@ class Series {
 }
 
 /// Shared line / area chart on fl_chart (one place for axes, grid, tooltips).
+double _xInterval(List<Series> series) {
+  var maxX = 0.0;
+  for (final s in series) {
+    for (final p in s.points) {
+      if (p.x > maxX) maxX = p.x;
+    }
+  }
+  final step = (maxX / 6).ceilToDouble();
+  return step < 1 ? 1 : step;
+}
+
 class LineChartX extends StatelessWidget {
   const LineChartX({
     super.key,
@@ -58,6 +85,8 @@ class LineChartX extends StatelessWidget {
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 24,
+                // About six labels however many points there are, so long period names do not collide.
+                interval: _xInterval(nonEmpty),
                 getTitlesWidget: (v, meta) => Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text((xFormat ?? (x) => x.toStringAsFixed(0))(v),

@@ -434,7 +434,7 @@ class _LabPageState extends State<LabPage> {
         child: LineChartX(
           height: 280,
           yFormat: (v) => fmtInr(v),
-          xFormat: (x) { final i = x.round(); return i >= 0 && i < curve.length ? curve[i]['date'].toString().substring(0, 7) : ''; },
+          xFormat: (x) { final i = x.round(); return i >= 0 && i < curve.length ? axisSlice(curve[i]['date'], 0, 7) : ''; },
           series: [Series('Strategy', [for (var i = 0; i < curve.length; i++) FlSpot(i.toDouble(), asNum(curve[i]['equity']) ?? 0)], Palette.primary, area: true)],
         ),
       ),
@@ -633,7 +633,7 @@ class _BacktestPageState extends State<BacktestPage> {
                   child: LineChartX(
                     height: 280,
                     yFormat: (v) => fmtInr(v),
-                    xFormat: (x) { final i = x.round(); return i >= 0 && i < curve.length ? curve[i]['date'].toString().substring(5, 10) : ''; },
+                    xFormat: (x) { final i = x.round(); return i >= 0 && i < curve.length ? chartDateLabel(curve[i]['date']) : ''; },
                     series: [
                       Series('Strategy', [for (var i = 0; i < curve.length; i++) FlSpot(i.toDouble(), asNum(curve[i]['strategy_value']) ?? 0)], Palette.primary, area: true),
                       Series('Buy & hold', [for (var i = 0; i < curve.length; i++) FlSpot(i.toDouble(), asNum(curve[i]['benchmark_value']) ?? 0)], Palette.inkMuted, dashed: true),

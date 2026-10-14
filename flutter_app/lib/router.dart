@@ -10,6 +10,7 @@ import 'features/markets/market_pages.dart';
 import 'features/tools/calculators_page.dart';
 import 'features/portfolio/console_page.dart';
 import 'features/portfolio/portfolio_pages.dart';
+import 'features/research/company_page.dart';
 import 'features/research/research_pages.dart';
 import 'widgets/app_shell.dart';
 import 'widgets/common.dart';
@@ -100,7 +101,7 @@ final appRouter = GoRouter(
 
 Widget _build(GoRouterState s) {
   final ticker = s.pathParameters['ticker'];
-  if (ticker != null) return AnalyseTickerPage(key: ValueKey(ticker), ticker: ticker);
+  if (ticker != null) return CompanyPage(key: ValueKey(ticker), ticker: ticker);
   final kind = s.pathParameters['kind'];
   if (kind != null) return CalculatorPage(key: ValueKey(kind), slug: kind);
   final code = s.pathParameters['schemeCode'];

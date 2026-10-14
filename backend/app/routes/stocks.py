@@ -149,6 +149,11 @@ def get_stock_history(
         if hist.index.tz is not None:
             hist.index = hist.index.tz_localize(None)
 
+        # Drop an incomplete latest bar (NaN close); NaN is not valid JSON.
+        hist = hist.dropna(subset=["Close"])
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No complete price bars returned for ticker {ticker}")
+
         if export_format == "csv":
             # Generate CSV in memory and stream
             stream = io.StringIO()
@@ -205,6 +210,12 @@ def get_stock_technicals(symbol: str):
         if hist.index.tz is not None:
             hist.index = hist.index.tz_localize(None)
 
+        # An incomplete latest bar (NaN close) turns every indicator NaN, which
+        # is not valid JSON. Same cause and fix as app/analysis.py.
+        hist = hist.dropna(subset=["Close"])
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No complete price bars found for {symbol}")
+
         extracted = extract_technicals(hist)
         scorecard = score_technicals(extracted)
 
@@ -218,6 +229,22 @@ def get_stock_technicals(symbol: str):
     except Exception as exc:
         logger.exception("Error evaluating technicals for %s", symbol)
         raise HTTPException(status_code=500, detail=f"Technicals calculation failed: {exc}")
+
+
+@router.get("/{symbol}/financials")
+def get_stock_financials(symbol: str):
+    """Quarterly results, P&L, balance sheet, cash flow and ratios (INR crore)."""
+    from app.company_page import get_financials
+
+    return get_financials(symbol)
+
+
+@router.get("/{symbol}/shareholding")
+def get_stock_shareholding(symbol: str):
+    """Promoter / FII / DII / public holding, quarterly and yearly history."""
+    from app.company_page import get_shareholding
+
+    return get_shareholding(symbol)
 
 
 @router.get("/{symbol}/fundamentals")
