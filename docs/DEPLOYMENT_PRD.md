@@ -241,3 +241,19 @@ Changing the value requires a redeploy; editing it in the dashboard alone does n
 - `frontend/src/app/page.tsx:43` — `API_BASE` fallback (R7)
 - `frontend/src/app/backtest/page.tsx:101` — `API_BASE` fallback (R7)
 - `frontend/src/app/analyse/[ticker]/page.tsx:97` — `API_BASE` fallback (R7)
+
+
+## 10. Update (2026-10): frontend is Flutter web, deployed by GitHub Actions
+
+The production frontend is `flutter_app/` (Flutter Web), not `frontend/` (Next.js, kept in the repo, no longer deployed). The backend is unchanged (Render, from `main`, `rootDir: backend`).
+
+**How a deploy happens**
+- `.github/workflows/deploy-flutter.yml` runs on pushes to `main` that touch `flutter_app/**`: `flutter analyze`, `flutter test`, `flutter build web --release --dart-define=API_URL=...`, then uploads the prebuilt output (`flutter_app/vercel-output/config.json` supplies the SPA fallback and no-cache headers) with `vercel deploy --prebuilt --prod`.
+- Pull requests get a preview deployment (behind Vercel SSO) instead of production.
+- The Vercel project `stockportfolio-in` no longer builds from git: its Ignored Build Step is `exit 0`, its root directory is empty and its framework preset is none. This is what stops Next.js from being promoted over Flutter after a push.
+
+**One-time GitHub setup** (Settings -> Secrets and variables -> Actions): secret `VERCEL_TOKEN`; variables `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `API_URL`. Until the token exists the workflow still builds and tests, and skips the deploy with a notice.
+
+**Rollback:** in the Vercel dashboard promote the previous deployment, or `vercel rollback <deployment-url>`. To return to Next.js, set the Ignored Build Step back to empty, restore root directory `frontend` and framework Next.js, and redeploy.
+
+**Manual deploy** (if CI is unavailable): build as above, place the build under `.vercel/output/static` next to `config.json`, and run `vercel deploy --prebuilt --prod --scope abhishekzgithubs-projects` from that directory.

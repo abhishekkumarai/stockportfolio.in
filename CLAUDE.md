@@ -68,3 +68,13 @@ flutter build web --release --dart-define=API_URL=https://<api>     # release
   A plain `python -m http.server` 404s on `/screener`.
 - Compose runs it as `flutter-web` on :3004 beside the Next.js `frontend` service.
 - The installed `file_picker` 13 API is `FilePicker.pickFile()` + `readAsBytes()`.
+
+### Deploying the Flutter site
+
+Production (www.stockportfolio.in) is the Vercel project `stockportfolio-in`, fed only by
+`.github/workflows/deploy-flutter.yml` (build, analyze, test, then `vercel deploy --prebuilt --prod`).
+The Vercel project does **not** build from git (Ignored Build Step `exit 0`, no root directory),
+so pushing to `main` cannot put Next.js live. Needs GitHub secret `VERCEL_TOKEN` and variables
+`VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`, `API_URL`; without them the workflow builds and tests but skips
+the deploy. Routing/no-cache config for the output lives in `flutter_app/vercel-output/config.json`.
+Roll back by promoting the previous deployment in the Vercel dashboard. Details: `docs/DEPLOYMENT_PRD.md` section 10.

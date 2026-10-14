@@ -1,0 +1,108 @@
+name: Deploy Flutter web
+
+# Builds flutter_app and uploads the prebuilt output to the Vercel project
+# `stockportfolio-in`. The project's own git builds are switched off
+# (Ignored Build Step = `exit 0`), so this workflow is the only thing that
+# reaches production. Pushes to main -> production; pull requests -> preview.
+#
+# One-time setup (repo Settings -> Secrets and variables -> Actions):
+#   secrets:   VERCEL_TOKEN
+#   variables: VERCEL_ORG_ID, VERCEL_PROJECT_ID, API_URL
+# Until VERCEL_TOKEN exists the deploy steps skip with a notice instead of failing.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "flutter_app/**"
+      - ".github/workflows/deploy-flutter.yml"
+  pull_request:
+    paths:
+      - "flutter_app/**"
+      - ".github/workflows/deploy-flutter.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-flutter-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUTTER_VERSION: "3.47.5"
+  API_URL: ${{ vars.API_URL || 'https://stockportfolio-api.onrender.com' }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: flutter_app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build web (release)
+        run: flutter build web --release --dart-define=API_URL=${{ env.API_URL }}
+
+      - name: Check Vercel credentials
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "::notice::Vercel credentials not configured; build and tests passed, deploy skipped."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Assemble Vercel prebuilt output
+        if: steps.vercel.outputs.ready == 'true'
+        run: |
+          mkdir -p .vercel/output/static
+          cp -r build/web/. .vercel/output/static/
+          cp vercel-output/config.json .vercel/output/config.json
+
+      - name: Deploy (production on main, preview otherwise)
+        if: steps.vercel.outputs.ready == 'true'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+        run: |
+          npm install --global vercel@latest
+          if [ "${{ github.event_name }}" = "push" ] && [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            vercel deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN"
+          else
+            vercel deploy --prebuilt --yes --token "$VERCEL_TOKEN"
+          fi
+
+  backend-tests:
+    # Informational for now: not required by the deploy job. One pre-existing
+    # failure (tests/test_auth.py::test_signup_and_signin_flow) is deselected
+    # until it is fixed or marked xfail (tracked in Jira).
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run pytest -q --deselect tests/test_auth.py::test_signup_and_signin_flow

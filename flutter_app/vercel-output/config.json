@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "routes": [
+    { "src": "/index.html", "headers": { "cache-control": "no-cache" }, "continue": true },
+    { "src": "/flutter_service_worker.js", "headers": { "cache-control": "no-cache" }, "continue": true },
+    { "src": "/main.dart.js", "headers": { "cache-control": "no-cache" }, "continue": true },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
+}
